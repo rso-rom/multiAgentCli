@@ -1,0 +1,30 @@
+﻿{
+  "name": "codeflow-pro",
+  "version": "0.1.0",
+  "description": "Multi-agent orchestration CLI with LMDB mid-term memory and optional Qdrant long-term recall.",
+  "type": "commonjs",
+  "bin": {
+    "codeflow": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "ts-node-dev --respawn --transpile-only src/cli/index.ts",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@qdrant/js-client-rest": "^1.4.0",
+    "axios": "^1.7.4",
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "dotenv": "^16.4.5",
+    "inquirer": "^9.3.7",
+    "js-yaml": "^4.1.0",
+    "lmdb": "^3.0.8"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.16.5",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.5.4"
+  }
+}

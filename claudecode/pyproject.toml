@@ -1,0 +1,12 @@
+[project]
+name = "claudecode-cli"
+version = "0.1.0"
+authors = [{name="You"}]
+description = "Minimal Claude-like code CLI"
+requires-python = ">=3.10"
+
+[project.dependencies]
+click = "^8.1"
+requests = "^2.31"
+pygments = "^2.15"
+rich = "^13.0"
