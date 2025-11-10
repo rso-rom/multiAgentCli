@@ -1,0 +1,23 @@
+{
+  "model": "custom-api",
+  "auth": {
+    "type": "bearer",
+    "prompt": "Enter your Custom API key:",
+    "headerName": "Authorization"
+  },
+  "endpoints": {
+    "completion": {
+      "method": "POST",
+      "url": "/v1/completions",
+      "baseUrl": "https://api.custom-model.example.com"
+    }
+  },
+  "parameters": {
+    "prompt": "string",
+    "model": "string",
+    "max_tokens": "number",
+    "temperature": "number"
+  },
+  "requestFormat": "json",
+  "responseFormat": "json"
+}

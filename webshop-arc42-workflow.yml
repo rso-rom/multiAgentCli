@@ -1,0 +1,104 @@
+name: webshop-with-arc42-documentation
+description: Erstelle einen Webshop und dokumentiere ihn nach arc42
+execution_mode: sequential
+
+agents:
+  architect:
+    role: Software-Architekt für Webshop
+    backend: mock
+    model: llama3
+
+  backend-developer:
+    role: Backend Entwickler
+    backend: mock
+    model: llama3
+
+  frontend-developer:
+    role: Frontend Entwickler
+    backend: mock
+    model: llama3
+
+  database-designer:
+    role: Datenbank Designer
+    backend: mock
+    model: llama3
+
+  arc42-documenter:
+    role: Technischer Dokumentator
+    backend: mock
+    model: llama3
+
+steps:
+  - agent: architect
+    input: |
+      Du bist ein Software-Architekt. Erstelle die Architektur für einen Webshop.
+
+      Definiere:
+      1. Systemkomponenten (Frontend, Backend, Datenbank, Payment Gateway)
+      2. Technologie-Stack (z.B. React, Node.js, PostgreSQL)
+      3. API-Design
+      4. Sicherheitskonzept
+
+      Gib eine strukturierte Antwort zurück.
+
+  - agent: backend-developer
+    input: |
+      Erstelle den Backend-Code für einen Webshop mit:
+      - Produktverwaltung (CRUD)
+      - Warenkorb-Funktionalität
+      - Benutzer-Authentifizierung
+      - Bestellabwicklung
+
+      Verwende Node.js/Express und TypeScript.
+    context_keys:
+      - architect
+
+  - agent: frontend-developer
+    input: |
+      Erstelle den Frontend-Code für einen Webshop mit:
+      - Produktkatalog
+      - Produktdetailseite
+      - Warenkorb
+      - Checkout-Prozess
+
+      Verwende React und TypeScript.
+    context_keys:
+      - architect
+
+  - agent: database-designer
+    input: |
+      Erstelle das Datenbankschema (SQL) für:
+      - Benutzer
+      - Produkte
+      - Kategorien
+      - Bestellungen
+      - Warenkorb
+
+      Inkludiere Indizes und Constraints.
+    context_keys:
+      - architect
+
+  - agent: arc42-documenter
+    input: |
+      Erstelle eine vollständige arc42 Dokumentation.
+
+      Dokumentiere nach arc42-Standard:
+      1. Einführung und Ziele
+      2. Randbedingungen
+      3. Kontextabgrenzung
+      4. Lösungsstrategie
+      5. Bausteinsicht
+      6. Laufzeitsicht
+      7. Verteilungssicht
+      8. Querschnittliche Konzepte
+      9. Architekturentscheidungen
+      10. Qualitätsanforderungen
+      11. Risiken und technische Schulden
+      12. Glossar
+
+      Formatiere als strukturiertes Markdown-Dokument.
+    context_keys:
+      - architect
+      - backend-developer
+      - frontend-developer
+      - database-designer

@@ -1,0 +1,8 @@
+{
+  "name": "bug-hunter",
+  "role": "Bug Detection Expert - Find bugs, security issues, performance problems",
+  "backend": "ollama",
+  "model": "codellama",
+  "tools": ["eslint", "pylint"],
+  "memoryLayers": ["short"]
+}

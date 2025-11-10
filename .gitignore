@@ -1,0 +1,47 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+.codechat_tmp_*
+*.tmp
+
+# Memory storage (data, not source)
+/memory/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv
+*.egg-info/
+
+# Temporary files
+*.html
+*.txt
+!README.md
+!example*.txt
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Development scripts
+inspect*.py
+extract*.py
+decode*.py
+generate*.py
+search*.py
+find*.py
+snippet*.py
+strings*.py
+content_types.py
+claudecode/
+first_object.json
+payload.txt
+part_*.txt
+share_bundle.js
+share*.html

@@ -1,0 +1,39 @@
+name: "Dynamic Adapter Workflow"
+description: "Demonstrates multi-agent workflow using dynamic adapters with OpenAPI and JSON specs"
+
+agents:
+  # Agent using OpenAPI URL (GPT-4 via OpenAI)
+  architect:
+    role: "Software Architect"
+    backend: "openai"
+    model: "gpt-4"
+    openApiUrl: "https://api.openai.com/v1/openapi.json"
+    tools: ["git"]
+
+  # Agent using local JSON spec (Ollama)
+  coder:
+    role: "Senior Software Engineer"
+    backend: "ollama"
+    model: "llama2"
+    localJsonPath: "examples/specs/ollama.json"
+    tools: ["npm", "git", "eslint"]
+
+  # Agent using custom API
+  reviewer:
+    role: "Code Reviewer"
+    backend: "custom"
+    model: "custom-api"
+    localJsonPath: "examples/specs/custom-model.json"
+    tools: ["eslint"]
+
+steps:
+  - agent: architect
+    input: "Design a REST API architecture for a task management system with authentication, user management, and task CRUD operations"
+
+  - agent: coder
+    input: "Implement the REST API endpoints based on the architecture from the architect"
+    context_keys: ["architect"]
+
+  - agent: reviewer
+    input: "Review the implementation and provide feedback on code quality, security, and best practices"
+    context_keys: ["coder"]

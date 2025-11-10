@@ -1,0 +1,8 @@
+{
+  "name": "documentation-writer",
+  "role": "Technical Documentation Specialist - Write clear, comprehensive documentation",
+  "backend": "ollama",
+  "model": "llama3",
+  "tools": [],
+  "memoryLayers": ["short", "long"]
+}

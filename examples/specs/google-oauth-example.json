@@ -1,0 +1,28 @@
+{
+  "model": "google-ai",
+  "auth": {
+    "type": "oauth",
+    "oauthConfig": {
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "clientId": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+      "clientSecret": "YOUR_CLIENT_SECRET",
+      "scopes": ["openid", "profile", "email"],
+      "callbackPort": 8080
+    }
+  },
+  "endpoints": {
+    "completion": {
+      "method": "POST",
+      "url": "/v1/chat/completions",
+      "baseUrl": "https://generativelanguage.googleapis.com"
+    }
+  },
+  "parameters": {
+    "prompt": "string",
+    "max_tokens": "number",
+    "temperature": "number"
+  },
+  "requestFormat": "json",
+  "responseFormat": "json"
+}

@@ -1,0 +1,8 @@
+{
+  "name": "code-reviewer",
+  "role": "Expert Code Reviewer - Analyze code quality, identify bugs, suggest improvements, check best practices",
+  "backend": "ollama",
+  "model": "codellama",
+  "tools": ["git", "eslint"],
+  "memoryLayers": ["short", "mid"]
+}

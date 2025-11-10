@@ -1,0 +1,20 @@
+{
+  "model": "llama2",
+  "auth": {
+    "type": "none"
+  },
+  "endpoints": {
+    "completion": {
+      "method": "POST",
+      "url": "/api/generate",
+      "baseUrl": "http://localhost:11434"
+    }
+  },
+  "parameters": {
+    "prompt": "string",
+    "model": "string",
+    "stream": "boolean"
+  },
+  "requestFormat": "json",
+  "responseFormat": "json"
+}

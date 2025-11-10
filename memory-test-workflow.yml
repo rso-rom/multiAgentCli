@@ -1,0 +1,54 @@
+name: memory-test
+description: Testet alle 4 Memory-Ebenen
+
+agents:
+  knowledge-keeper:
+    role: "Wissensspeicher - speichert Informationen"
+    backend: ollama
+    model: llama-3.2-3b-instruct
+
+  knowledge-retriever:
+    role: "Wissensabrufer - ruft gespeicherte Infos ab"
+    backend: ollama
+    model: llama-3.2-3b-instruct
+
+  analyst:
+    role: "Analyst - analysiert gespeichertes Wissen"
+    backend: ollama
+    model: llama-3.2-3b-instruct
+
+steps:
+  - agent: knowledge-keeper
+    input: |
+      Speichere folgende Design Patterns:
+
+      1. **Singleton Pattern**: Stellt sicher, dass eine Klasse nur eine Instanz hat
+      2. **Factory Pattern**: Erstellt Objekte ohne die genaue Klasse anzugeben
+      3. **Observer Pattern**: Benachrichtigt abhängige Objekte über Änderungen
+      4. **Strategy Pattern**: Definiert austauschbare Algorithmen
+
+      Fasse diese Patterns kurz zusammen.
+
+  - agent: knowledge-retriever
+    input: |
+      Basierend auf dem gespeicherten Wissen:
+
+      Erkläre, welche Design Patterns für folgendes Szenario geeignet sind:
+      "Ich möchte eine Logging-Klasse, die in der ganzen Anwendung verwendet wird"
+
+      Nutze das Wissen vom vorherigen Agent.
+    context_keys:
+      - knowledge-keeper
+
+  - agent: analyst
+    input: |
+      Analysiere die vorherigen Antworten und erstelle eine Empfehlung:
+
+      1. Welches Pattern wurde empfohlen?
+      2. Warum ist es die beste Wahl?
+      3. Welche Alternativen gibt es?
+
+      Nutze alle vorherigen Agent-Outputs.
+    context_keys:
+      - knowledge-keeper
+      - knowledge-retriever

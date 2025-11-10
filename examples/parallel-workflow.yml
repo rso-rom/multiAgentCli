@@ -1,0 +1,51 @@
+name: "Parallel Code Analysis Workflow"
+description: "Run multiple code analysis tasks in parallel for faster results"
+
+# Execution configuration
+execution_mode: parallel  # sequential | parallel
+max_concurrent: 3         # Maximum number of agents running concurrently
+
+agents:
+  linter:
+    role: "Code Linter - Check code style and formatting"
+    backend: mock
+    tools: ["eslint", "prettier"]
+
+  type_checker:
+    role: "Type Checker - Verify type safety"
+    backend: mock
+    tools: ["tsc"]
+
+  security_scanner:
+    role: "Security Scanner - Find vulnerabilities"
+    backend: mock
+    tools: []
+
+  test_runner:
+    role: "Test Runner - Execute test suite"
+    backend: mock
+    tools: ["jest"]
+
+  reviewer:
+    role: "Code Reviewer - Provide comprehensive review"
+    backend: mock
+    tools: []
+
+steps:
+  # These 4 steps run in parallel (no context_keys = independent)
+  - agent: linter
+    input: "Check code style and formatting issues in the codebase"
+
+  - agent: type_checker
+    input: "Verify type safety and find any type errors"
+
+  - agent: security_scanner
+    input: "Scan for security vulnerabilities and potential exploits"
+
+  - agent: test_runner
+    input: "Run the full test suite and report failures"
+
+  # This step runs after all parallel steps complete (has context_keys = dependent)
+  - agent: reviewer
+    input: "Based on all analysis results, provide a comprehensive code review summary"
+    context_keys: ["linter", "type_checker", "security_scanner", "test_runner"]

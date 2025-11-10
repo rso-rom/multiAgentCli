@@ -1,0 +1,8 @@
+{
+  "name": "test-generator",
+  "role": "Test Generation Specialist - Create comprehensive unit tests, integration tests, edge cases",
+  "backend": "ollama",
+  "model": "codellama",
+  "tools": ["jest", "pytest"],
+  "memoryLayers": ["short"]
+}

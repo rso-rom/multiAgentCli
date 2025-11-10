@@ -1,0 +1,22 @@
+{
+  "model": "gpt-4o-mini",
+  "auth": {
+    "type": "bearer",
+    "prompt": "Enter your OpenAI API key:",
+    "headerName": "Authorization"
+  },
+  "endpoints": {
+    "completion": {
+      "method": "POST",
+      "url": "/v1/chat/completions",
+      "baseUrl": "https://api.openai.com"
+    }
+  },
+  "parameters": {
+    "messages": "array",
+    "max_tokens": "number",
+    "temperature": "number"
+  },
+  "requestFormat": "json",
+  "responseFormat": "json"
+}

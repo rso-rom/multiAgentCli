@@ -1,0 +1,75 @@
+{
+  "name": "cacli",
+  "version": "3.0.0",
+  "description": "cacli (Coding Assistent CLI): Multi-Agent AI Orchestration with Dynamic Workflow Generation, Requirements Engineer, and Natural Language Interface",
+  "keywords": [
+    "ai",
+    "cli",
+    "llm",
+    "ollama",
+    "multi-agent",
+    "workflow",
+    "automation",
+    "orchestration",
+    "typescript",
+    "requirements-engineering",
+    "dynamic-workflows",
+    "cacli",
+    "coding-assistant"
+  ],
+  "author": "rso-rom <your.email@example.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rso-rom/multiAgentCli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rso-rom/multiAgentCli/issues"
+  },
+  "homepage": "https://github.com/rso-rom/multiAgentCli#readme",
+  "bin": {
+    "cacli": "dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "templates/",
+    ".claude/",
+    "README.md",
+    "LICENSE",
+    "QUICK-START.md",
+    "docs/"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "prepublishOnly": "npm run build && npm test",
+    "test": "echo \"Tests will be added\" && exit 0",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@qdrant/js-client-rest": "^1.9.0",
+    "@types/express": "^5.0.5",
+    "axios": "^1.5.0",
+    "chalk": "^4.1.2",
+    "commander": "^11.0.0",
+    "dotenv": "^16.0.0",
+    "express": "^5.1.0",
+    "inquirer": "^8.2.7",
+    "js-yaml": "^4.1.0",
+    "lmdb": "^3.0.0",
+    "prismjs": "^1.29.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.0",
+    "@types/js-yaml": "^4.0.0",
+    "@types/node": "^20.5.0",
+    "@types/prismjs": "^1.26.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.5.0"
+  }
+}

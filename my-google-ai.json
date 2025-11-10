@@ -1,0 +1,31 @@
+{
+  "model": "gemini-pro",
+  "auth": {
+    "type": "oauth",
+    "oauthConfig": {
+      "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+      "tokenUrl": "https://oauth2.googleapis.com/token",
+      "clientId": "DEINE_CLIENT_ID.apps.googleusercontent.com",
+      "clientSecret": "DEIN_CLIENT_SECRET",
+      "scopes": [
+        "https://www.googleapis.com/auth/cloud-platform",
+        "https://www.googleapis.com/auth/generative-language"
+      ],
+      "callbackPort": 8080
+    }
+  },
+  "endpoints": {
+    "completion": {
+      "method": "POST",
+      "url": "/v1beta/models/gemini-pro:generateContent",
+      "baseUrl": "https://generativelanguage.googleapis.com"
+    }
+  },
+  "parameters": {
+    "prompt": "string",
+    "max_tokens": "number",
+    "temperature": "number"
+  },
+  "requestFormat": "json",
+  "responseFormat": "json"
+}

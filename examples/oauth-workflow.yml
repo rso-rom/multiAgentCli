@@ -1,0 +1,13 @@
+name: "OAuth2 Workflow Example"
+description: "Example workflow using OAuth2 authentication"
+
+agents:
+  researcher:
+    role: "Research Assistant"
+    backend: "oauth-provider"
+    model: "google-ai"
+    localJsonPath: "examples/specs/google-oauth-example.json"
+
+steps:
+  - agent: researcher
+    input: "Research the latest developments in AI and summarize"

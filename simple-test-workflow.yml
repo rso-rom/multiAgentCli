@@ -1,0 +1,12 @@
+name: simple-test
+description: Einfacher Test-Workflow
+
+agents:
+  coder:
+    role: Python Entwickler
+    backend: mock
+    model: llama3
+
+steps:
+  - agent: coder
+    input: Erstelle ein einfaches Python "Hello World" Programm

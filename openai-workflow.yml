@@ -1,0 +1,14 @@
+name: openai-test
+description: Test OpenAI mit API Key
+
+agents:
+  openai-coder:
+    role: "Senior Developer"
+    backend: "oauth-provider"
+    model: "gpt-4o-mini"
+    localJsonPath: "openai-apikey.json"
+
+steps:
+  - agent: openai-coder
+    input: |
+      Erstelle ein einfaches Python Programm, das "Hello from OpenAI" ausgibt.

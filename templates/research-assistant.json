@@ -1,0 +1,8 @@
+{
+  "name": "research-assistant",
+  "role": "Research Assistant - Gather information, analyze data, provide insights",
+  "backend": "ollama",
+  "model": "llama3",
+  "tools": [],
+  "memoryLayers": ["short", "mid", "long"]
+}

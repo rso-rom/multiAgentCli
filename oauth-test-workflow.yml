@@ -1,0 +1,14 @@
+name: oauth-login-test
+description: Test OAuth2 Login mit Google AI
+
+agents:
+  google-researcher:
+    role: "Researcher using Google AI"
+    backend: "oauth-provider"
+    model: "gemini-pro"
+    localJsonPath: "my-google-ai.json"
+
+steps:
+  - agent: google-researcher
+    input: |
+      Erkläre kurz, wie OAuth2 funktioniert und warum es sicherer als API Keys ist.

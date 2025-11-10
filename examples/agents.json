@@ -1,0 +1,34 @@
+{
+  "agents": [
+    {
+      "name": "code-agent",
+      "model": "gpt-4",
+      "role": "Senior Software Engineer",
+      "backend": "openai",
+      "memoryLayers": ["mid", "long"],
+      "capabilities": ["code-gen", "refactoring", "debugging"],
+      "tools": ["git", "npm", "eslint"],
+      "openApiUrl": "https://api.openai.com/v1/openapi.json"
+    },
+    {
+      "name": "research-agent",
+      "model": "llama2",
+      "role": "Research Analyst",
+      "backend": "ollama",
+      "memoryLayers": ["short", "mid"],
+      "capabilities": ["internet-search", "summarization"],
+      "tools": [],
+      "localJsonPath": "specs/ollama.json"
+    },
+    {
+      "name": "custom-model-agent",
+      "model": "custom-api",
+      "role": "Custom Model Assistant",
+      "backend": "custom",
+      "memoryLayers": ["short"],
+      "capabilities": ["general"],
+      "tools": [],
+      "localJsonPath": "specs/custom-model.json"
+    }
+  ]
+}

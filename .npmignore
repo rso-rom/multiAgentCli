@@ -1,0 +1,56 @@
+# Source files
+src/
+tsconfig.json
+*.ts
+!*.d.ts
+
+# Development
+node_modules/
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Tests
+test/
+tests/
+*.test.ts
+*.test.js
+
+# Documentation (only include what's in "files")
+*.md
+!README.md
+!QUICK-START.md
+
+# Build artifacts
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Examples that shouldn't be published
+example-workflow.yml
+appcoding-example/
+memory/
+
+# Docker
+docker-compose.yml
+Dockerfile
+
+# Python (if any)
+*.pyc
+__pycache__/
