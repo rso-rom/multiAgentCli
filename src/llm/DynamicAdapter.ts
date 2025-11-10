@@ -63,14 +63,36 @@ export class DynamicAdapter {
    * Load specification from OpenAPI URL or local JSON
    */
   async loadSpec(source: ModelSpecSource): Promise<void> {
-    // Check if spec is already cached in memory
+    // 1. Check disk cache first (fastest)
+    const cacheDir = path.join('.cache', 'api-specs');
+    const cacheFile = path.join(cacheDir, `${source.model.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
+
+    try {
+      const cached = fs.readFileSync(cacheFile, 'utf-8');
+      this.spec = JSON.parse(cached);
+      console.log(`✅ Loaded spec from disk cache for ${source.model}`);
+      return;
+    } catch {
+      // Cache miss - continue to load from source
+    }
+
+    // 2. Check if spec is already cached in memory
     const stored = await this.memory.getMid(`adapterSpec:${source.model}`);
     if (stored) {
       this.spec = JSON.parse(stored as string);
-      console.log(`✅ Loaded cached spec for ${source.model}`);
+      console.log(`✅ Loaded cached spec from memory for ${source.model}`);
+
+      // Save to disk cache for next time
+      try {
+        fs.mkdirSync(cacheDir, { recursive: true });
+        fs.writeFileSync(cacheFile, stored);
+      } catch {
+        // Ignore cache write errors
+      }
       return;
     }
 
+    // 3. Load from source
     if (source.openApiUrl) {
       console.log(`📥 Loading OpenAPI spec from ${source.openApiUrl}`);
       const openApi = await axios.get(source.openApiUrl).then(r => r.data);
@@ -83,9 +105,20 @@ export class DynamicAdapter {
       throw new Error(`No specification source for model ${source.model}`);
     }
 
-    // Cache spec in mid-term memory
-    await this.memory.setMid(`adapterSpec:${source.model}`, JSON.stringify(this.spec));
-    console.log(`✅ Spec loaded and cached for ${source.model}`);
+    const specJson = JSON.stringify(this.spec);
+
+    // 4. Cache spec in mid-term memory
+    await this.memory.setMid(`adapterSpec:${source.model}`, specJson);
+
+    // 5. Save to disk cache
+    try {
+      fs.mkdirSync(cacheDir, { recursive: true });
+      fs.writeFileSync(cacheFile, specJson);
+      console.log(`✅ Spec loaded and cached for ${source.model}`);
+    } catch (err) {
+      console.warn('⚠️  Could not write to disk cache:', err);
+      console.log(`✅ Spec loaded (memory cache only) for ${source.model}`);
+    }
   }
 
   /**

@@ -13,7 +13,7 @@ export async function runWebAgent(
   prompt: string,
   maxLoops = 4
 ): Promise<string> {
-  let context = `You are a coding assistant with access to web tools.
+  const context = `You are a coding assistant with access to web tools.
 You can use these tools only when needed:
 
 - TOOL: search("query") - search the web

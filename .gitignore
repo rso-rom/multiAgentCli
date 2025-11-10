@@ -10,6 +10,9 @@ dist/
 coverage/
 *.lcov
 
+# Cache
+.cache/
+
 # Memory storage (data, not source)
 /memory/
 

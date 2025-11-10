@@ -164,7 +164,7 @@ export class CallbackServer {
     if (this.server) {
       this.server.close();
       this.server = null;
-      console.log(`🛑 Callback server stopped`);
+      console.log('🛑 Callback server stopped');
     }
   }
 

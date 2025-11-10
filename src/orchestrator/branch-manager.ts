@@ -214,7 +214,7 @@ export class BranchManager {
    * Get branch by ID or name
    */
   getBranch(branchIdOrName: string): ConversationBranch | undefined {
-    let branch = this.branches.get(branchIdOrName);
+    const branch = this.branches.get(branchIdOrName);
     if (!branch) {
       for (const b of this.branches.values()) {
         if (b.name === branchIdOrName) {

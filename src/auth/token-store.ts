@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import os from 'os';
+import { Logger } from '../utils/logger';
 
 export interface OAuthToken {
   access_token: string;
@@ -22,6 +23,7 @@ export class TokenStore {
   private saltPath: string;
   private tokens: Map<string, OAuthToken> = new Map();
   private encryptionKey!: Buffer;
+  private logger: Logger;
 
   constructor(customPath?: string) {
     const configDir = path.join(os.homedir(), '.codechat');
@@ -33,6 +35,8 @@ export class TokenStore {
     } else {
       this.saltPath = path.join(configDir, '.salt');
     }
+
+    this.logger = new Logger('TokenStore');
   }
 
   /**
@@ -51,7 +55,7 @@ export class TokenStore {
       await this.load();
     } catch (err) {
       // File doesn't exist yet - that's OK, we'll create it on first save
-      console.log('📁 Creating new token store...');
+      this.logger.info('Creating new token store');
     }
   }
 
@@ -72,7 +76,7 @@ export class TokenStore {
 
       // Save salt with restricted permissions (0o600 = owner read/write only)
       await fs.writeFile(this.saltPath, salt, { mode: 0o600 });
-      console.log('🔐 Generated new encryption salt');
+      this.logger.debug('Generated new encryption salt');
     }
 
     // Derive encryption key from machine-specific data + random salt
@@ -94,7 +98,7 @@ export class TokenStore {
     this.tokens.set(provider, token);
     await this.save();
 
-    console.log(`✅ Token saved for ${provider} (persists across restarts)`);
+    this.logger.success(`Token saved for ${provider} (persists across restarts)`);
   }
 
   /**
@@ -108,7 +112,7 @@ export class TokenStore {
 
     // Check if token is expired
     if (token.expires_at && token.expires_at < Date.now()) {
-      console.log(`⚠️  Token for ${provider} has expired`);
+      this.logger.warn(`Token for ${provider} has expired`);
       return token; // Return it anyway - caller can decide to refresh
     }
 
@@ -133,7 +137,7 @@ export class TokenStore {
   async revokeToken(provider: string): Promise<void> {
     this.tokens.delete(provider);
     await this.save();
-    console.log(`🗑️  Token for ${provider} revoked and deleted`);
+    this.logger.info(`Token for ${provider} revoked and deleted`);
   }
 
   /**
@@ -180,7 +184,7 @@ export class TokenStore {
   async clearAll(): Promise<void> {
     this.tokens.clear();
     await this.save();
-    console.log('🗑️  All tokens cleared');
+    this.logger.info('All tokens cleared');
   }
 
   /**
@@ -192,7 +196,7 @@ export class TokenStore {
       const encrypted = this.encrypt(data);
       await fs.writeFile(this.tokensPath, encrypted, 'utf-8');
     } catch (err) {
-      console.error('❌ Failed to save tokens:', err);
+      this.logger.error('Failed to save tokens:', err);
     }
   }
 
@@ -206,7 +210,7 @@ export class TokenStore {
       const entries = JSON.parse(decrypted);
       this.tokens = new Map(entries);
 
-      console.log(`📁 Loaded ${this.tokens.size} saved token(s)`);
+      this.logger.info(`Loaded ${this.tokens.size} saved token(s)`);
     } catch (err) {
       // File doesn't exist or is corrupted - start fresh
       this.tokens = new Map();

@@ -40,15 +40,15 @@ export class TokenManager {
       // Token expired or about to expire
       if (timeUntilExpiry < REFRESH_THRESHOLD) {
         if (token.refresh_token && oauthConfig) {
-          console.log(`🔄 Token expiring soon, refreshing...`);
+          console.log('🔄 Token expiring soon, refreshing...');
           const flow = new OAuth2BrowserFlow(oauthConfig);
           const refreshedToken = await flow.refreshToken(token.refresh_token);
           return refreshedToken.access_token;
         } else if (!oauthConfig) {
-          console.log(`⚠️  Token expired but no OAuth config to refresh`);
+          console.log('⚠️  Token expired but no OAuth config to refresh');
         } else {
           // No refresh token - need to re-authenticate
-          console.log(`🔐 Token expired and no refresh token available, re-authenticating...`);
+          console.log('🔐 Token expired and no refresh token available, re-authenticating...');
           const newToken = await this.authenticate(oauthConfig);
           return newToken.access_token;
         }
@@ -112,7 +112,7 @@ export class TokenManager {
 
           this.refreshTimers.set(config.provider, retryTimer);
         } else {
-          console.error(`❌ Auto-refresh failed after 3 retries. Manual re-authentication required.`);
+          console.error('❌ Auto-refresh failed after 3 retries. Manual re-authentication required.');
           this.refreshTimers.delete(config.provider);
         }
       }

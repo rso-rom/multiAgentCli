@@ -18,11 +18,11 @@ export class WorkflowGraph {
       const icon = node.status === 'done' ? '✅' : node.status === 'running' ? '🔄' : '⏳';
       const time = node.duration ? ` (${(node.duration / 1000).toFixed(1)}s)` : '';
 
-      output += `  ┌─────────┐\n`;
+      output += '  ┌─────────┐\n';
       output += `  │ ${name.padEnd(7)} │ ${icon}${time}\n`;
       output += `  └────${i < entries.length - 1 ? '┬' : '─'}────┘\n`;
       if (i < entries.length - 1) {
-        output += `       │\n`;
+        output += '       │\n';
       }
     }
     return output;
