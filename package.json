@@ -46,8 +46,10 @@
     "build": "tsc -p tsconfig.json",
     "start": "npm run build && node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "prepublishOnly": "npm run build && npm test",
-    "test": "echo \"Tests will be added\" && exit 0",
     "prepare": "npm run build"
   },
   "dependencies": {
@@ -66,9 +68,12 @@
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.0",
+    "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.0",
     "@types/node": "^20.5.0",
     "@types/prismjs": "^1.26.0",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.5",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.5.0"
   }

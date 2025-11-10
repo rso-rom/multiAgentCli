@@ -76,7 +76,7 @@ export class TokenManager {
   /**
    * Setup automatic token refresh before expiration
    */
-  private setupAutoRefresh(config: OAuth2Config, token: OAuthToken): void {
+  private setupAutoRefresh(config: OAuth2Config, token: OAuthToken, retryCount: number = 0): void {
     // Clear existing timer
     const existingTimer = this.refreshTimers.get(config.provider);
     if (existingTimer) {
@@ -96,10 +96,25 @@ export class TokenManager {
         const flow = new OAuth2BrowserFlow(config);
         const refreshedToken = await flow.refreshToken(token.refresh_token!);
 
-        // Setup next refresh
-        this.setupAutoRefresh(config, refreshedToken);
+        // Setup next refresh (reset retry count on success)
+        this.setupAutoRefresh(config, refreshedToken, 0);
       } catch (err) {
         console.error(`❌ Auto-refresh failed for ${config.provider}:`, err);
+
+        // Retry with exponential backoff (max 3 retries)
+        if (retryCount < 3) {
+          const backoffMinutes = Math.pow(2, retryCount) * 5; // 5, 10, 20 minutes
+          console.log(`⏰ Retrying in ${backoffMinutes} minutes (attempt ${retryCount + 1}/3)...`);
+
+          const retryTimer = setTimeout(() => {
+            this.setupAutoRefresh(config, token, retryCount + 1);
+          }, backoffMinutes * 60 * 1000);
+
+          this.refreshTimers.set(config.provider, retryTimer);
+        } else {
+          console.error(`❌ Auto-refresh failed after 3 retries. Manual re-authentication required.`);
+          this.refreshTimers.delete(config.provider);
+        }
       }
     }, refreshIn);
 

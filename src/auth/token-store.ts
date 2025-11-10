@@ -19,33 +19,66 @@ export interface OAuthToken {
  */
 export class TokenStore {
   private tokensPath: string;
+  private saltPath: string;
   private tokens: Map<string, OAuthToken> = new Map();
-  private encryptionKey: Buffer;
+  private encryptionKey!: Buffer;
 
   constructor(customPath?: string) {
     const configDir = path.join(os.homedir(), '.codechat');
     this.tokensPath = customPath || path.join(configDir, 'tokens.json');
 
-    // Use machine-specific key for encryption (simple encryption for demo)
-    // In production, consider using keytar or OS keychain
-    const keySource = os.hostname() + os.userInfo().username;
-    this.encryptionKey = crypto.scryptSync(keySource, 'salt', 32);
+    // If custom path is provided, use same directory for salt
+    if (customPath) {
+      this.saltPath = path.join(path.dirname(customPath), '.salt');
+    } else {
+      this.saltPath = path.join(configDir, '.salt');
+    }
   }
 
   /**
    * Initialize token store and load saved tokens
    */
   async initialize(): Promise<void> {
-    try {
-      // Ensure config directory exists
-      const dir = path.dirname(this.tokensPath);
-      await fs.mkdir(dir, { recursive: true });
+    // Ensure config directory exists
+    const dir = path.dirname(this.tokensPath);
+    await fs.mkdir(dir, { recursive: true });
 
-      // Load existing tokens
+    // Initialize encryption key with secure salt (must succeed)
+    await this.initializeEncryptionKey();
+
+    // Try to load existing tokens
+    try {
       await this.load();
     } catch (err) {
+      // File doesn't exist yet - that's OK, we'll create it on first save
       console.log('📁 Creating new token store...');
     }
+  }
+
+  /**
+   * Initialize encryption key with secure random salt
+   * Salt is persisted to disk for consistent encryption/decryption
+   */
+  private async initializeEncryptionKey(): Promise<void> {
+    let salt: Buffer;
+
+    try {
+      // Try to load existing salt
+      const saltData = await fs.readFile(this.saltPath);
+      salt = saltData;
+    } catch {
+      // Generate new random salt
+      salt = crypto.randomBytes(32);
+
+      // Save salt with restricted permissions (0o600 = owner read/write only)
+      await fs.writeFile(this.saltPath, salt, { mode: 0o600 });
+      console.log('🔐 Generated new encryption salt');
+    }
+
+    // Derive encryption key from machine-specific data + random salt
+    // This provides both uniqueness and randomness
+    const keySource = os.hostname() + os.userInfo().username;
+    this.encryptionKey = crypto.scryptSync(keySource, salt, 32);
   }
 
   /**

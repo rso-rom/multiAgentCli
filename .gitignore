@@ -6,8 +6,16 @@ dist/
 .codechat_tmp_*
 *.tmp
 
+# Test coverage
+coverage/
+*.lcov
+
 # Memory storage (data, not source)
 /memory/
+
+# Token storage (security)
+.salt
+tokens.json
 
 # Python
 __pycache__/

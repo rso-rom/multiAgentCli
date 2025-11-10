@@ -7,6 +7,42 @@ import { ModelSpecSource, APISpec } from './ModelSpecSource';
 import { globalTokenManager } from '../auth/token-manager';
 import { OAuth2Config } from '../auth/oauth2-browser-flow';
 
+// OpenAPI 3.0 type definitions
+interface OpenAPISecurityScheme {
+  type: 'http' | 'apiKey' | 'oauth2' | 'openIdConnect';
+  scheme?: string;
+  name?: string;
+  in?: 'query' | 'header' | 'cookie';
+}
+
+interface OpenAPIPathMethods {
+  get?: any;
+  post?: any;
+  put?: any;
+  delete?: any;
+  [key: string]: any;
+}
+
+interface OpenAPISpec {
+  openapi?: string;
+  info?: {
+    title?: string;
+    version?: string;
+  };
+  servers?: Array<{
+    url: string;
+    description?: string;
+  }>;
+  paths?: {
+    [path: string]: OpenAPIPathMethods;
+  };
+  components?: {
+    securitySchemes?: {
+      [name: string]: OpenAPISecurityScheme;
+    };
+  };
+}
+
 /**
  * Dynamic adapter that can load model specs from OpenAPI or JSON
  * and automatically handle authentication and API calls
@@ -55,14 +91,13 @@ export class DynamicAdapter {
   /**
    * Convert OpenAPI 3.0 spec to internal APISpec format
    */
-  private convertOpenAPIToSpec(openApiSpec: any): APISpec {
+  private convertOpenAPIToSpec(openApiSpec: OpenAPISpec): APISpec {
     // Find first POST endpoint for completion (typically /chat/completions or /completions)
     let completionPath: string | null = null;
     let completionMethod = 'POST';
 
     for (const [path, methods] of Object.entries(openApiSpec.paths || {})) {
-      const methodsObj = methods as any;
-      if (methodsObj.post && (path.includes('completion') || path.includes('chat') || path.includes('generate'))) {
+      if (methods.post && (path.includes('completion') || path.includes('chat') || path.includes('generate'))) {
         completionPath = path;
         completionMethod = 'POST';
         break;
@@ -83,7 +118,7 @@ export class DynamicAdapter {
 
     if (openApiSpec.components?.securitySchemes) {
       const schemes = openApiSpec.components.securitySchemes;
-      const firstScheme = Object.values(schemes)[0] as any;
+      const firstScheme = Object.values(schemes)[0] as OpenAPISecurityScheme | undefined;
 
       if (firstScheme?.type === 'http' && firstScheme?.scheme === 'bearer') {
         authType = 'bearer';

@@ -116,9 +116,9 @@ export class OAuth2BrowserFlow {
       console.log(`✅ Successfully authenticated! Token saved for future use.`);
       return token;
 
-    } catch (err) {
+    } finally {
+      // Always stop server, even on success (prevents hanging)
       callbackServer.stop();
-      throw err;
     }
   }
 
