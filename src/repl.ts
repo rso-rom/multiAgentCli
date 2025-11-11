@@ -119,6 +119,8 @@ export class ReplSession {
       await this.cmdHistory(arg);
     } else if (verb === 'token') {
       await this.cmdToken(arg);
+    } else if (verb === 'screenshot' || verb === 'ss' || verb === 'image' || verb === 'img') {
+      await this.cmdScreenshot(arg);
     } else if (verb === 'clear' || verb === 'c') {
       console.clear();
     } else {
@@ -761,6 +763,90 @@ Return the full file in a code block.`;
       }
     } catch (error: any) {
       console.error(`❌ Token error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Analyze screenshot/image with vision model
+   */
+  async cmdScreenshot(arg: string): Promise<void> {
+    if (!arg) {
+      console.log(`Usage: /screenshot <image-path> [question]
+
+Examples:
+  /screenshot error.png
+  /screenshot screenshot.png "What's wrong in this UI?"
+  /ss ~/Desktop/bug.jpg "Analyze this error"
+
+Supported formats: .png, .jpg, .jpeg, .gif, .webp, .bmp
+Max size: 20MB
+Requires: OPENAI_API_KEY environment variable
+`);
+      return;
+    }
+
+    try {
+      // Parse argument: first part is path, rest is optional question
+      const parts = arg.split(' ');
+      const imagePath = parts[0];
+      const question = parts.slice(1).join(' ') || undefined;
+
+      // Load image handler and vision backend
+      const { imageHandler } = await import('./utils/image-handler');
+      const { VisionOpenAI } = await import('./backends/vision-openai');
+
+      // Validate API key
+      if (!process.env.OPENAI_API_KEY) {
+        console.log(`❌ OpenAI API key required for vision models.
+
+Please set OPENAI_API_KEY environment variable:
+  export OPENAI_API_KEY=your-key-here
+
+Or add to .env file:
+  OPENAI_API_KEY=your-key-here
+`);
+        return;
+      }
+
+      // Validate image
+      console.log(`📸 Loading image: ${imagePath}`);
+      const validation = await imageHandler.validateImage(imagePath);
+
+      if (!validation.valid) {
+        console.log(`❌ ${validation.error}`);
+        return;
+      }
+
+      // Initialize vision backend
+      const vision = new VisionOpenAI();
+
+      // Analyze screenshot
+      console.log(`🔍 Analyzing with GPT-4 Vision...`);
+      const response = await vision.analyzeScreenshot(imagePath, question);
+
+      console.log(`\n💡 Analysis:\n`);
+      console.log(response);
+      console.log('');
+
+      // Store in ask history if available
+      if (this.askStoreHandler) {
+        const prompt = question || 'Analyze screenshot';
+        await this.askStoreHandler.storePrompt({
+          agent: 'vision',
+          text: `${prompt} [Image: ${imagePath}]`,
+          timestamp: new Date(),
+          metadata: {
+            command: 'screenshot',
+            file: imagePath,
+          },
+        });
+      }
+    } catch (error: any) {
+      console.error(`❌ Screenshot analysis error: ${error.message}`);
+
+      if (error.message.includes('API key')) {
+        console.log(`\n💡 Tip: Make sure your OpenAI API key is valid and has access to GPT-4 Vision (gpt-4o model).`);
+      }
     }
   }
 }
