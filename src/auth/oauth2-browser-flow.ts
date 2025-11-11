@@ -64,7 +64,7 @@ export class OAuth2BrowserFlow {
         try {
           const refreshedToken = await this.refreshToken(existingToken.refresh_token);
           return refreshedToken;
-        } catch (err) {
+        } catch (_err) {
           console.log('⚠️  Token refresh failed, starting new authentication...');
         }
       }
@@ -232,7 +232,7 @@ export class OAuth2BrowserFlow {
       : process.platform === 'darwin' ? 'open'
         : 'xdg-open';
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       exec(`${command} "${url}"`, (err) => {
         if (err) {
           console.log(`\n⚠️  Could not open browser automatically. Please visit:\n${url}\n`);

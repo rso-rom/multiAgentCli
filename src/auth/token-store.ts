@@ -53,7 +53,7 @@ export class TokenStore {
     // Try to load existing tokens
     try {
       await this.load();
-    } catch (err) {
+    } catch {
       // File doesn't exist yet - that's OK, we'll create it on first save
       this.logger.info('Creating new token store');
     }
@@ -211,7 +211,7 @@ export class TokenStore {
       this.tokens = new Map(entries);
 
       this.logger.info(`Loaded ${this.tokens.size} saved token(s)`);
-    } catch (err) {
+    } catch {
       // File doesn't exist or is corrupted - start fresh
       this.tokens = new Map();
     }

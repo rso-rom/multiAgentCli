@@ -1,5 +1,4 @@
 import express from 'express';
-import { createServer } from 'http';
 import type { Server } from 'http';
 
 export interface CallbackResult {

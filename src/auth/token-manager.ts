@@ -8,8 +8,8 @@ export class TokenManager {
   private refreshTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor() {
-    // Initialize token store on creation
-    this.initialize();
+    // Initialize token store on creation (fire and forget)
+    void this.initialize();
   }
 
   async initialize(): Promise<void> {
