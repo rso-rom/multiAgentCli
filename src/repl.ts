@@ -121,6 +121,8 @@ export class ReplSession {
       await this.cmdToken(arg);
     } else if (verb === 'screenshot' || verb === 'ss' || verb === 'image' || verb === 'img') {
       await this.cmdScreenshot(arg);
+    } else if (verb === 'paste' || verb === 'clip' || verb === 'clipboard') {
+      await this.cmdPaste(arg);
     } else if (verb === 'clear' || verb === 'c') {
       console.clear();
     } else {
@@ -354,6 +356,18 @@ export class ReplSession {
     /develop Erstelle einen Blog mit Next.js
     /api User management system
 
+📸 VISION & IMAGES
+  /screenshot <file> [question]  Analyze image file (alias: /ss, /image, /img)
+  /paste [question]              Analyze image from clipboard (alias: /clip)
+
+  Examples:
+    /screenshot error.png "What's wrong?"
+    /paste "Explain this UI"
+    /ss bug.jpg
+
+  Supported: .png, .jpg, .jpeg, .gif, .webp, .bmp (max 20MB)
+  Requires: OPENAI_API_KEY (uses GPT-4 Vision)
+
 🔧 UTILITIES
   /tools            Show available CLI tools (alias: /t)
   /history [query]  Search prompt history (alias: /hist)
@@ -362,8 +376,10 @@ export class ReplSession {
   /help             Show this help (alias: /h)
   /exit             Quit (alias: /quit)
 
-💡 TIP: Workflows support arguments via $TASK and $1, $2, etc.
-    Type "/workflows" to see all available templates.
+💡 TIPS:
+  • Workflows support arguments via $TASK and $1, $2, etc.
+  • Drag & drop image files into terminal to get the path
+  • Type "/workflows" to see all available templates
 `);
   }
 
@@ -845,6 +861,73 @@ Or add to .env file:
       console.error(`❌ Screenshot analysis error: ${error.message}`);
 
       if (error.message.includes('API key')) {
+        console.log(`\n💡 Tip: Make sure your OpenAI API key is valid and has access to GPT-4 Vision (gpt-4o model).`);
+      }
+    }
+  }
+
+  /**
+   * /paste - Analyze image from clipboard
+   */
+  async cmdPaste(arg: string): Promise<void> {
+    try {
+      // Parse optional question from argument
+      const question = arg || undefined;
+
+      // Load image handler and vision backend
+      const { imageHandler } = await import('./utils/image-handler');
+      const { VisionOpenAI } = await import('./backends/vision-openai');
+
+      // Validate API key
+      if (!process.env.OPENAI_API_KEY) {
+        console.log(`❌ OpenAI API key required for vision models.
+
+Please set OPENAI_API_KEY environment variable:
+  export OPENAI_API_KEY=your-key-here
+
+Or add to .env file:
+  OPENAI_API_KEY=your-key-here
+`);
+        return;
+      }
+
+      // Load image from clipboard
+      console.log(`📋 Reading image from clipboard...`);
+      const { image } = await imageHandler.loadImageFromClipboard(question);
+
+      // Initialize vision backend
+      const vision = new VisionOpenAI();
+
+      // Analyze screenshot
+      console.log(`🔍 Analyzing with GPT-4 Vision...`);
+      const response = await vision.generate(question || 'What do you see in this image?', [image]);
+
+      console.log(`\n💡 Analysis:\n`);
+      console.log(response);
+      console.log('');
+
+      // Store in ask history if available
+      if (this.askStoreHandler) {
+        const prompt = question || 'Analyze clipboard image';
+        await this.askStoreHandler.storePrompt({
+          agent: 'vision',
+          text: `${prompt} [From clipboard]`,
+          timestamp: new Date(),
+          metadata: {
+            command: 'paste',
+            source: 'clipboard',
+          },
+        });
+      }
+    } catch (error: any) {
+      console.error(`❌ Clipboard analysis error: ${error.message}`);
+
+      if (error.message.includes('Install')) {
+        console.log(`\n💡 Setup required for clipboard support:`);
+        console.log(error.message);
+      } else if (error.message.includes('No image')) {
+        console.log(`\n💡 Tip: Copy an image to your clipboard first (Cmd+C / Ctrl+C on an image).`);
+      } else if (error.message.includes('API key')) {
         console.log(`\n💡 Tip: Make sure your OpenAI API key is valid and has access to GPT-4 Vision (gpt-4o model).`);
       }
     }

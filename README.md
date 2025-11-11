@@ -102,6 +102,7 @@ Siehe → **[docs/features/oauth.md](docs/features/oauth.md)**
 |-------|--------|------|
 | **Memory System** | 4-Ebenen Memory, Qdrant | [docs/features/memory-system.md](docs/features/memory-system.md) |
 | **OAuth2** | Login-Flows, Token-Management | [docs/features/oauth.md](docs/features/oauth.md) |
+| **Vision/Screenshots** | GPT-4o Vision, Copy & Paste | [docs/features/vision.md](docs/features/vision.md) |
 
 ---
 
@@ -142,6 +143,10 @@ Was ist async/await?  # Direkt fragen
 /workflow <name>      # Workflow starten
 /develop <task>       # Full-stack entwickeln
 /api <task>           # REST API erstellen
+
+# Vision & Screenshots
+/screenshot <file>    # Bild analysieren (GPT-4o)
+/paste [question]     # Clipboard-Screenshot analysieren
 
 # Utility
 /help                 # Hilfe anzeigen

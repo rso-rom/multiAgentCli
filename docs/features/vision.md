@@ -5,6 +5,8 @@ cacli unterstützt die Analyse von Screenshots und Bildern mit Vision-Models wie
 ## Features
 
 - ✅ Screenshot-Upload direkt in der CLI
+- ✅ **Clipboard Support** - Copy & Paste von Screenshots
+- ✅ **Drag & Drop** - Dateien ins Terminal ziehen
 - ✅ Automatische Bildvalidierung
 - ✅ Unterstützung für alle gängigen Formate
 - ✅ Vision-Model Integration (GPT-4o)
@@ -34,6 +36,45 @@ cacli unterstützt die Analyse von Screenshots und Bildern mit Vision-Models wie
 # Kurz-Aliase
 > /ss bug.jpg
 > /img ~/Desktop/screenshot.png
+```
+
+### 📋 Clipboard Support (Copy & Paste)
+
+**NEU**: Screenshots direkt aus der Zwischenablage analysieren!
+
+```bash
+# Screenshot mit Cmd+C / Ctrl+C kopieren, dann:
+> /paste
+
+# Mit spezifischer Frage
+> /paste "What's wrong in this UI?"
+
+# Kurz-Aliase
+> /clip "Explain this error"
+> /clipboard
+```
+
+**So funktioniert's:**
+1. Screenshot machen (Cmd+Shift+4 auf macOS, Win+Shift+S auf Windows)
+2. Bild kopieren (Cmd+C / Ctrl+C)
+3. In cacli `/paste` eingeben
+4. Fertig! 🎉
+
+**Plattform-Voraussetzungen:**
+- **macOS**: `pngpaste` installieren → `brew install pngpaste`
+- **Linux**: `xclip` installieren → `sudo apt-get install xclip`
+- **Windows**: PowerShell (bereits vorinstalliert)
+
+### 🎯 Drag & Drop Support
+
+**Noch einfacher**: Bild-Datei einfach ins Terminal ziehen!
+
+```bash
+# Datei ins Terminal ziehen (Pfad wird automatisch eingefügt)
+> /screenshot /Users/name/Desktop/screenshot.png
+
+# Oder mit Frage
+> /ss [Datei ziehen] "What's this?"
 ```
 
 ### Beispiele
@@ -162,6 +203,17 @@ Please set OPENAI_API_KEY environment variable:
 ❌ File not found or not accessible
 ```
 
+**5. Clipboard: Keine Bilddaten**
+```
+❌ No image in clipboard. Copy an image first (Cmd+C / Ctrl+C on an image).
+```
+
+**6. Clipboard: Tool fehlt**
+```
+❌ Install pngpaste: brew install pngpaste  # macOS
+❌ Install xclip: sudo apt-get install xclip  # Linux
+```
+
 ## Performance
 
 - **Upload**: Lokal, kein Upload-Server benötigt
@@ -200,6 +252,9 @@ import { imageHandler } from './utils/image-handler';
 
 // Bild laden
 const image = await imageHandler.loadImage('./screenshot.png');
+
+// **NEU**: Bild aus Clipboard laden
+const { image } = await imageHandler.loadImageFromClipboard('What do you see?');
 
 // Validieren
 const validation = await imageHandler.validateImage('./screenshot.png');
