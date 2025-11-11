@@ -1,15 +1,16 @@
 # 📸 Vision / Screenshot Analysis
 
-cacli unterstützt die Analyse von Screenshots und Bildern mit Vision-Models wie GPT-4o.
+cacli unterstützt die Analyse von Screenshots und Bildern mit Vision-Models. Die Bildanalyse funktioniert mit jedem Backend, das Vision unterstützt - der aktuell konfigurierte Agent analysiert die Bilder.
 
 ## Features
 
 - ✅ Screenshot-Upload direkt in der CLI
 - ✅ **Clipboard Support** - Copy & Paste von Screenshots
 - ✅ **Drag & Drop** - Dateien ins Terminal ziehen
+- ✅ **Backend-Unabhängig** - Funktioniert mit jedem Vision-fähigen Backend
 - ✅ Automatische Bildvalidierung
 - ✅ Unterstützung für alle gängigen Formate
-- ✅ Vision-Model Integration (GPT-4o)
+- ✅ Vision-Model Integration (GPT-4o, LLaVA, etc.)
 - ✅ Speicherung in Ask-History
 
 ## Unterstützte Formate
@@ -101,29 +102,61 @@ cacli unterstützt die Analyse von Screenshots und Bildern mit Vision-Models wie
 
 ## Setup
 
-### Voraussetzungen
+### Backend-Wahl
 
-1. **OpenAI API Key** erforderlich
-2. **GPT-4o Model** Zugriff
+Die Bildanalyse nutzt immer das **aktuell konfigurierte Backend**. Wähle ein Backend das Vision unterstützt:
 
-### Configuration
+#### **Option 1: OpenAI (gpt-4o)**
 
-**Option 1: Environment Variable**
 ```bash
+# API Key setzen
 export OPENAI_API_KEY=your-key-here
+
+# cacli mit OpenAI Backend starten
+cacli -b openai
 ```
 
-**Option 2: .env File**
+**Voraussetzungen:**
+- OpenAI API Key ([Platform](https://platform.openai.com/))
+- GPT-4o Model Zugriff
+
+**Vorteile:**
+- ✅ Beste Vision-Qualität
+- ✅ Schnell
+- ✅ Streaming-Support
+- ❌ Kostenpflichtig (~$0.01-0.02 pro Bild)
+
+#### **Option 2: Ollama (LLaVA / Bakllava)**
+
 ```bash
-# .env
-OPENAI_API_KEY=your-key-here
+# Vision-Model pullen
+ollama pull llava
+
+# cacli mit Ollama + Vision Model starten
+OLLAMA_MODEL=llava cacli -b ollama
 ```
 
-### API Key erhalten
+**Voraussetzungen:**
+- Ollama installiert ([ollama.ai](https://ollama.ai))
+- Vision-Model (llava, bakllava, llava:13b, etc.)
 
-1. Gehe zu [OpenAI Platform](https://platform.openai.com/)
-2. Erstelle einen API Key
-3. Stelle sicher, dass GPT-4 Vision aktiviert ist
+**Vorteile:**
+- ✅ Komplett lokal (keine API Keys)
+- ✅ Kostenlos
+- ✅ Privacy
+- ❌ Langsamer
+- ❌ Etwas schlechtere Qualität
+
+#### **Backend-Status prüfen**
+
+```bash
+# Vision-Support des aktuellen Backends prüfen
+> /screenshot
+Usage: /screenshot <image-path> [question]
+...
+Current backend: openai
+Vision support: ✅ Yes
+```
 
 ## Features im Detail
 
@@ -151,12 +184,16 @@ Screenshots werden automatisch in der Ask-History gespeichert:
    "What's wrong in this UI? [Image: error.png]"
 ```
 
-### Vision Backend
+### Unterstützte Vision-Backends
 
-Aktuell unterstützt:
-- ✅ **GPT-4o** (OpenAI) - Empfohlen
-- 🔜 **Claude 3** (Anthropic) - Coming soon
-- 🔜 **Gemini Pro Vision** (Google) - Coming soon
+| Backend | Model | Qualität | Geschwindigkeit | Kosten | Status |
+|---------|-------|----------|-----------------|--------|--------|
+| **OpenAI** | gpt-4o | ⭐⭐⭐⭐⭐ | Schnell | ~$0.01-0.02/Bild | ✅ Verfügbar |
+| **Ollama** | llava | ⭐⭐⭐ | Langsam | Kostenlos | ✅ Verfügbar |
+| **Ollama** | llava:13b | ⭐⭐⭐⭐ | Sehr langsam | Kostenlos | ✅ Verfügbar |
+| **Ollama** | bakllava | ⭐⭐⭐ | Langsam | Kostenlos | ✅ Verfügbar |
+| **Claude 3** | opus/sonnet | ⭐⭐⭐⭐⭐ | Schnell | ~$0.02-0.03/Bild | 🔜 Coming soon |
+| **Gemini** | pro-vision | ⭐⭐⭐⭐ | Schnell | ~$0.01/Bild | 🔜 Coming soon |
 
 ## Workflow Integration
 
@@ -264,27 +301,40 @@ const openaiFormat = imageHandler.formatForOpenAI(image);
 const claudeFormat = imageHandler.formatForClaude(image);
 ```
 
-### VisionOpenAI
+### Backend Vision API
+
+**Verwende das aktuelle Backend direkt (empfohlen):**
 
 ```typescript
-import { VisionOpenAI } from './backends/vision-openai';
+// In der REPL ist this.backend bereits verfügbar
+// Prüfe Vision-Support
+if (this.backend.supportsVision()) {
+  const { imageHandler } = await import('./utils/image-handler');
+  const image = await imageHandler.loadImage('./error.png');
 
-const vision = new VisionOpenAI();
+  await this.backend.analyzeImage(
+    'What is the error?',
+    [image],
+    (chunk) => process.stdout.write(chunk)
+  );
+}
+```
 
-// Screenshot analysieren
-const analysis = await vision.analyzeScreenshot(
-  './error.png',
-  'What is the error?'
-);
+**Oder spezifisches Backend verwenden:**
 
-// Text extrahieren (OCR)
-const text = await vision.extractText('./document.png');
+```typescript
+import { OpenAIBackend } from './backends/vision-openai';
+import { OllamaBackend } from './backends/ollama';
+import { imageHandler } from './utils/image-handler';
 
-// Mehrere Bilder vergleichen
-const comparison = await vision.compareScreenshots(
-  ['before.png', 'after.png'],
-  'What changed?'
-);
+// OpenAI GPT-4o
+const openai = new OpenAIBackend(process.env.OPENAI_API_KEY, 'gpt-4o');
+const image = await imageHandler.loadImage('./error.png');
+const analysis = await openai.analyzeImage('What is the error?', [image]);
+
+// Ollama LLaVA
+const ollama = new OllamaBackend('http://localhost:11434', 'llava');
+const analysis2 = await ollama.analyzeImage('Describe this image', [image]);
 ```
 
 ## Kosten
@@ -300,12 +350,15 @@ GPT-4o Vision Pricing (Stand: Januar 2025):
 
 ## Roadmap
 
+- [x] Ollama LLaVA Support (lokal, kostenlos)
+- [x] Backend-unabhängige Vision-API
 - [ ] Claude 3 Opus/Sonnet Support
 - [ ] Gemini Pro Vision Support
 - [ ] Multi-Image Vergleiche
 - [ ] Batch-Processing
-- [ ] Lokale Vision Models (CLIP, LLaVA)
+- [ ] Weitere lokale Vision Models (CLIP, moondream)
 - [ ] Video-Frame Analyse
+- [ ] OCR-optimierte Models
 
 ## Troubleshooting
 

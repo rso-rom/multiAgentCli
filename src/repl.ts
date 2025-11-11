@@ -796,33 +796,36 @@ Examples:
 
 Supported formats: .png, .jpg, .jpeg, .gif, .webp, .bmp
 Max size: 20MB
-Requires: OPENAI_API_KEY environment variable
+
+Backend support:
+  - Ollama: Use vision models like 'llava' or 'bakllava'
+  - OpenAI: Automatically uses gpt-4o (requires OPENAI_API_KEY)
+  - Current backend: ${this.backendName}
+  - Vision support: ${this.backend.supportsVision() ? '✅ Yes' : '❌ No'}
 `);
       return;
     }
 
     try {
-      // Parse argument: first part is path, rest is optional question
-      const parts = arg.split(' ');
-      const imagePath = parts[0];
-      const question = parts.slice(1).join(' ') || undefined;
+      // Check if current backend supports vision
+      if (!this.backend.supportsVision()) {
+        console.log(`❌ Current backend (${this.backendName}) does not support vision.
 
-      // Load image handler and vision backend
-      const { imageHandler } = await import('./utils/image-handler');
-      const { VisionOpenAI } = await import('./backends/vision-openai');
-
-      // Validate API key
-      if (!process.env.OPENAI_API_KEY) {
-        console.log(`❌ OpenAI API key required for vision models.
-
-Please set OPENAI_API_KEY environment variable:
-  export OPENAI_API_KEY=your-key-here
-
-Or add to .env file:
-  OPENAI_API_KEY=your-key-here
+To use vision features:
+  1. Switch to OpenAI: cacli -b openai (requires OPENAI_API_KEY)
+  2. Or use Ollama with vision model: OLLAMA_MODEL=llava cacli -b ollama
+  3. Or switch backend: /help for more info
 `);
         return;
       }
+
+      // Parse argument: first part is path, rest is optional question
+      const parts = arg.split(' ');
+      const imagePath = parts[0];
+      const question = parts.slice(1).join(' ') || 'What do you see in this image? Describe it in detail.';
+
+      // Load image handler
+      const { imageHandler } = await import('./utils/image-handler');
 
       // Validate image
       console.log(`📸 Loading image: ${imagePath}`);
@@ -833,27 +836,32 @@ Or add to .env file:
         return;
       }
 
-      // Initialize vision backend
-      const vision = new VisionOpenAI();
+      // Load the image
+      const image = await imageHandler.loadImage(imagePath);
 
-      // Analyze screenshot
-      console.log(`🔍 Analyzing with GPT-4 Vision...`);
-      const response = await vision.analyzeScreenshot(imagePath, question);
+      // Analyze with current backend
+      console.log(`🔍 Analyzing with ${this.backendName} vision model...`);
+
+      let response = '';
+      const onStream = (chunk: string) => {
+        response += chunk;
+        process.stdout.write(chunk);
+      };
 
       console.log(`\n💡 Analysis:\n`);
-      console.log(response);
-      console.log('');
+      await this.backend.analyzeImage(question, [image], onStream);
+      console.log('\n');
 
       // Store in ask history if available
       if (this.askStoreHandler) {
-        const prompt = question || 'Analyze screenshot';
         await this.askStoreHandler.storePrompt({
           agent: 'vision',
-          text: `${prompt} [Image: ${imagePath}]`,
+          text: `${question} [Image: ${imagePath}]`,
           timestamp: new Date(),
           metadata: {
             command: 'screenshot',
             file: imagePath,
+            backend: this.backendName,
           },
         });
       }
@@ -861,7 +869,9 @@ Or add to .env file:
       console.error(`❌ Screenshot analysis error: ${error.message}`);
 
       if (error.message.includes('API key')) {
-        console.log(`\n💡 Tip: Make sure your OpenAI API key is valid and has access to GPT-4 Vision (gpt-4o model).`);
+        console.log(`\n💡 Tip: Make sure your API key is set and valid.`);
+      } else if (error.message.includes('vision')) {
+        console.log(`\n💡 Tip: Switch to a vision-capable model or backend.`);
       }
     }
   }
@@ -871,51 +881,51 @@ Or add to .env file:
    */
   async cmdPaste(arg: string): Promise<void> {
     try {
-      // Parse optional question from argument
-      const question = arg || undefined;
+      // Check if current backend supports vision
+      if (!this.backend.supportsVision()) {
+        console.log(`❌ Current backend (${this.backendName}) does not support vision.
 
-      // Load image handler and vision backend
-      const { imageHandler } = await import('./utils/image-handler');
-      const { VisionOpenAI } = await import('./backends/vision-openai');
-
-      // Validate API key
-      if (!process.env.OPENAI_API_KEY) {
-        console.log(`❌ OpenAI API key required for vision models.
-
-Please set OPENAI_API_KEY environment variable:
-  export OPENAI_API_KEY=your-key-here
-
-Or add to .env file:
-  OPENAI_API_KEY=your-key-here
+To use vision features:
+  1. Switch to OpenAI: cacli -b openai (requires OPENAI_API_KEY)
+  2. Or use Ollama with vision model: OLLAMA_MODEL=llava cacli -b ollama
+  3. Or switch backend: /help for more info
 `);
         return;
       }
+
+      // Parse optional question from argument
+      const question = arg || 'What do you see in this image?';
+
+      // Load image handler
+      const { imageHandler } = await import('./utils/image-handler');
 
       // Load image from clipboard
       console.log(`📋 Reading image from clipboard...`);
       const { image } = await imageHandler.loadImageFromClipboard(question);
 
-      // Initialize vision backend
-      const vision = new VisionOpenAI();
+      // Analyze with current backend
+      console.log(`🔍 Analyzing with ${this.backendName} vision model...`);
 
-      // Analyze screenshot
-      console.log(`🔍 Analyzing with GPT-4 Vision...`);
-      const response = await vision.generate(question || 'What do you see in this image?', [image]);
+      let response = '';
+      const onStream = (chunk: string) => {
+        response += chunk;
+        process.stdout.write(chunk);
+      };
 
       console.log(`\n💡 Analysis:\n`);
-      console.log(response);
-      console.log('');
+      await this.backend.analyzeImage(question, [image], onStream);
+      console.log('\n');
 
       // Store in ask history if available
       if (this.askStoreHandler) {
-        const prompt = question || 'Analyze clipboard image';
         await this.askStoreHandler.storePrompt({
           agent: 'vision',
-          text: `${prompt} [From clipboard]`,
+          text: `${question} [From clipboard]`,
           timestamp: new Date(),
           metadata: {
             command: 'paste',
             source: 'clipboard',
+            backend: this.backendName,
           },
         });
       }
@@ -928,7 +938,9 @@ Or add to .env file:
       } else if (error.message.includes('No image')) {
         console.log(`\n💡 Tip: Copy an image to your clipboard first (Cmd+C / Ctrl+C on an image).`);
       } else if (error.message.includes('API key')) {
-        console.log(`\n💡 Tip: Make sure your OpenAI API key is valid and has access to GPT-4 Vision (gpt-4o model).`);
+        console.log(`\n💡 Tip: Make sure your API key is set and valid.`);
+      } else if (error.message.includes('vision')) {
+        console.log(`\n💡 Tip: Switch to a vision-capable model or backend.`);
       }
     }
   }

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ImageInput, imageHandler } from '../utils/image-handler';
+import { ModelBackend, StreamCallback } from './base';
 
 export interface VisionMessage {
   role: 'user' | 'assistant' | 'system';
@@ -7,22 +8,150 @@ export interface VisionMessage {
 }
 
 /**
- * OpenAI GPT-4 Vision backend
+ * OpenAI GPT-4 backend with vision support
+ * Can be used as a general-purpose backend or for vision tasks
  */
-export class VisionOpenAI {
+export class OpenAIBackend extends ModelBackend {
   private apiKey: string;
   private baseUrl = 'https://api.openai.com/v1/chat/completions';
-  private model = 'gpt-4o'; // Supports vision
+  private model: string;
 
-  constructor(apiKey?: string) {
+  constructor(apiKey?: string, model = 'gpt-4o') {
+    super();
     this.apiKey = apiKey || process.env.OPENAI_API_KEY || '';
+    this.model = model;
     if (!this.apiKey) {
-      throw new Error('OpenAI API key required for vision models. Set OPENAI_API_KEY environment variable.');
+      throw new Error('OpenAI API key required. Set OPENAI_API_KEY environment variable.');
     }
   }
 
   /**
-   * Send prompt with image(s) to GPT-4 Vision
+   * OpenAI models with vision support
+   */
+  supportsVision(): boolean {
+    return this.model.includes('gpt-4o') || this.model.includes('gpt-4-vision');
+  }
+
+  /**
+   * Standard chat interface (text-only)
+   */
+  async chat(prompt: string, onStream?: StreamCallback): Promise<string | void> {
+    try {
+      const response = await axios.post(
+        this.baseUrl,
+        {
+          model: this.model,
+          messages: [{ role: 'user', content: prompt }],
+          stream: !!onStream,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          },
+          responseType: onStream ? 'stream' : 'json',
+        }
+      );
+
+      if (!onStream) {
+        return response.data.choices[0].message.content;
+      }
+
+      // Handle streaming
+      for await (const chunk of response.data as any) {
+        const lines = chunk.toString().split('\n').filter((line: string) => line.trim().startsWith('data:'));
+        for (const line of lines) {
+          const message = line.replace(/^data: /, '');
+          if (message === '[DONE]') {
+            return;
+          }
+          try {
+            const parsed = JSON.parse(message);
+            const content = parsed.choices[0]?.delta?.content;
+            if (content) {
+              onStream(content);
+            }
+          } catch {
+            // Skip invalid JSON
+          }
+        }
+      }
+    } catch (error: any) {
+      const errorMsg = `OpenAI API error: ${error.message}`;
+      if (onStream) {
+        onStream(errorMsg);
+      }
+      return errorMsg;
+    }
+  }
+
+  /**
+   * Analyze images with vision models (implements ModelBackend interface)
+   */
+  async analyzeImage(prompt: string, images: ImageInput[], onStream?: StreamCallback): Promise<string | void> {
+    if (!this.supportsVision()) {
+      throw new Error(`Model ${this.model} does not support vision. Use gpt-4o or gpt-4-vision.`);
+    }
+
+    // Build message content
+    const content: VisionMessage['content'] = [{ type: 'text', text: prompt }];
+
+    // Add images
+    for (const image of images) {
+      content.push(imageHandler.formatForOpenAI(image) as { type: 'image_url'; image_url: { url: string } });
+    }
+
+    try {
+      const response = await axios.post(
+        this.baseUrl,
+        {
+          model: this.model,
+          messages: [{ role: 'user', content }],
+          stream: !!onStream,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          },
+          responseType: onStream ? 'stream' : 'json',
+        }
+      );
+
+      if (!onStream) {
+        return response.data.choices[0].message.content;
+      }
+
+      // Handle streaming
+      for await (const chunk of response.data as any) {
+        const lines = chunk.toString().split('\n').filter((line: string) => line.trim().startsWith('data:'));
+        for (const line of lines) {
+          const message = line.replace(/^data: /, '');
+          if (message === '[DONE]') {
+            return;
+          }
+          try {
+            const parsed = JSON.parse(message);
+            const content = parsed.choices[0]?.delta?.content;
+            if (content) {
+              onStream(content);
+            }
+          } catch {
+            // Skip invalid JSON
+          }
+        }
+      }
+    } catch (error: any) {
+      const errorMsg = `OpenAI vision error: ${error.message}`;
+      if (onStream) {
+        onStream(errorMsg);
+      }
+      return errorMsg;
+    }
+  }
+
+  /**
+   * Send prompt with image(s) to GPT-4 Vision (legacy method for backward compatibility)
    */
   async generate(prompt: string, images: ImageInput[], options?: { temperature?: number; maxTokens?: number }): Promise<string> {
     // Build message content
