@@ -1,5 +1,6 @@
 import { OllamaBackend } from './backends/ollama';
 import { OpenWebUIBackend } from './backends/openwebui';
+import { OpenAIBackend } from './backends/vision-openai';
 import { MockBackend } from './backends/mock';
 import dotenv from 'dotenv';
 
@@ -23,7 +24,13 @@ export function getBackend(name?: string) {
     );
   }
 
-  // openai omitted for brevity — add similar adapter if needed
+  if (backend === 'openai') {
+    return new OpenAIBackend(
+      process.env.OPENAI_API_KEY,
+      process.env.OPENAI_MODEL || 'gpt-4o'
+    );
+  }
+
   return new MockBackend();
 }
 

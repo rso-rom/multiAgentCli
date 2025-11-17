@@ -135,7 +135,7 @@ export class ToolRegistry {
     total: number;
     available: number;
     unavailable: number;
-  } {
+    } {
     const all = this.getAllTools();
     const available = this.getAvailableTools();
 

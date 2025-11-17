@@ -119,6 +119,10 @@ export class ReplSession {
       await this.cmdHistory(arg);
     } else if (verb === 'token') {
       await this.cmdToken(arg);
+    } else if (verb === 'screenshot' || verb === 'ss' || verb === 'image' || verb === 'img') {
+      await this.cmdScreenshot(arg);
+    } else if (verb === 'paste' || verb === 'clip' || verb === 'clipboard') {
+      await this.cmdPaste(arg);
     } else if (verb === 'clear' || verb === 'c') {
       console.clear();
     } else {
@@ -352,6 +356,18 @@ export class ReplSession {
     /develop Erstelle einen Blog mit Next.js
     /api User management system
 
+📸 VISION & IMAGES
+  /screenshot <file> [question]  Analyze image file (alias: /ss, /image, /img)
+  /paste [question]              Analyze image from clipboard (alias: /clip)
+
+  Examples:
+    /screenshot error.png "What's wrong?"
+    /paste "Explain this UI"
+    /ss bug.jpg
+
+  Supported: .png, .jpg, .jpeg, .gif, .webp, .bmp (max 20MB)
+  Requires: OPENAI_API_KEY (uses GPT-4 Vision)
+
 🔧 UTILITIES
   /tools            Show available CLI tools (alias: /t)
   /history [query]  Search prompt history (alias: /hist)
@@ -360,8 +376,10 @@ export class ReplSession {
   /help             Show this help (alias: /h)
   /exit             Quit (alias: /quit)
 
-💡 TIP: Workflows support arguments via $TASK and $1, $2, etc.
-    Type "/workflows" to see all available templates.
+💡 TIPS:
+  • Workflows support arguments via $TASK and $1, $2, etc.
+  • Drag & drop image files into terminal to get the path
+  • Type "/workflows" to see all available templates
 `);
   }
 
@@ -761,6 +779,169 @@ Return the full file in a code block.`;
       }
     } catch (error: any) {
       console.error(`❌ Token error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Analyze screenshot/image with vision model
+   */
+  async cmdScreenshot(arg: string): Promise<void> {
+    if (!arg) {
+      console.log(`Usage: /screenshot <image-path> [question]
+
+Examples:
+  /screenshot error.png
+  /screenshot screenshot.png "What's wrong in this UI?"
+  /ss ~/Desktop/bug.jpg "Analyze this error"
+
+Supported formats: .png, .jpg, .jpeg, .gif, .webp, .bmp
+Max size: 20MB
+
+Backend support:
+  - Ollama: Use vision models like 'llava' or 'bakllava'
+  - OpenAI: Automatically uses gpt-4o (requires OPENAI_API_KEY)
+  - Current backend: ${this.backendName}
+  - Vision support: ${this.backend.supportsVision() ? '✅ Yes' : '❌ No'}
+`);
+      return;
+    }
+
+    try {
+      // Check if current backend supports vision
+      if (!this.backend.supportsVision()) {
+        console.log(`❌ Current backend (${this.backendName}) does not support vision.
+
+To use vision features:
+  1. Switch to OpenAI: cacli -b openai (requires OPENAI_API_KEY)
+  2. Or use Ollama with vision model: OLLAMA_MODEL=llava cacli -b ollama
+  3. Or switch backend: /help for more info
+`);
+        return;
+      }
+
+      // Parse argument: first part is path, rest is optional question
+      const parts = arg.split(' ');
+      const imagePath = parts[0];
+      const question = parts.slice(1).join(' ') || 'What do you see in this image? Describe it in detail.';
+
+      // Load image handler
+      const { imageHandler } = await import('./utils/image-handler');
+
+      // Validate image
+      console.log(`📸 Loading image: ${imagePath}`);
+      const validation = await imageHandler.validateImage(imagePath);
+
+      if (!validation.valid) {
+        console.log(`❌ ${validation.error}`);
+        return;
+      }
+
+      // Load the image
+      const image = await imageHandler.loadImage(imagePath);
+
+      // Analyze with current backend
+      console.log(`🔍 Analyzing with ${this.backendName} vision model...`);
+
+      let response = '';
+      const onStream = (chunk: string) => {
+        response += chunk;
+        process.stdout.write(chunk);
+      };
+
+      console.log(`\n💡 Analysis:\n`);
+      await this.backend.analyzeImage(question, [image], onStream);
+      console.log('\n');
+
+      // Store in ask history if available
+      if (this.askStoreHandler) {
+        await this.askStoreHandler.storePrompt({
+          agent: 'vision',
+          text: `${question} [Image: ${imagePath}]`,
+          timestamp: new Date(),
+          metadata: {
+            command: 'screenshot',
+            file: imagePath,
+            backend: this.backendName,
+          },
+        });
+      }
+    } catch (error: any) {
+      console.error(`❌ Screenshot analysis error: ${error.message}`);
+
+      if (error.message.includes('API key')) {
+        console.log(`\n💡 Tip: Make sure your API key is set and valid.`);
+      } else if (error.message.includes('vision')) {
+        console.log(`\n💡 Tip: Switch to a vision-capable model or backend.`);
+      }
+    }
+  }
+
+  /**
+   * /paste - Analyze image from clipboard
+   */
+  async cmdPaste(arg: string): Promise<void> {
+    try {
+      // Check if current backend supports vision
+      if (!this.backend.supportsVision()) {
+        console.log(`❌ Current backend (${this.backendName}) does not support vision.
+
+To use vision features:
+  1. Switch to OpenAI: cacli -b openai (requires OPENAI_API_KEY)
+  2. Or use Ollama with vision model: OLLAMA_MODEL=llava cacli -b ollama
+  3. Or switch backend: /help for more info
+`);
+        return;
+      }
+
+      // Parse optional question from argument
+      const question = arg || 'What do you see in this image?';
+
+      // Load image handler
+      const { imageHandler } = await import('./utils/image-handler');
+
+      // Load image from clipboard
+      console.log(`📋 Reading image from clipboard...`);
+      const { image } = await imageHandler.loadImageFromClipboard(question);
+
+      // Analyze with current backend
+      console.log(`🔍 Analyzing with ${this.backendName} vision model...`);
+
+      let response = '';
+      const onStream = (chunk: string) => {
+        response += chunk;
+        process.stdout.write(chunk);
+      };
+
+      console.log(`\n💡 Analysis:\n`);
+      await this.backend.analyzeImage(question, [image], onStream);
+      console.log('\n');
+
+      // Store in ask history if available
+      if (this.askStoreHandler) {
+        await this.askStoreHandler.storePrompt({
+          agent: 'vision',
+          text: `${question} [From clipboard]`,
+          timestamp: new Date(),
+          metadata: {
+            command: 'paste',
+            source: 'clipboard',
+            backend: this.backendName,
+          },
+        });
+      }
+    } catch (error: any) {
+      console.error(`❌ Clipboard analysis error: ${error.message}`);
+
+      if (error.message.includes('Install')) {
+        console.log(`\n💡 Setup required for clipboard support:`);
+        console.log(error.message);
+      } else if (error.message.includes('No image')) {
+        console.log(`\n💡 Tip: Copy an image to your clipboard first (Cmd+C / Ctrl+C on an image).`);
+      } else if (error.message.includes('API key')) {
+        console.log(`\n💡 Tip: Make sure your API key is set and valid.`);
+      } else if (error.message.includes('vision')) {
+        console.log(`\n💡 Tip: Switch to a vision-capable model or backend.`);
+      }
     }
   }
 }

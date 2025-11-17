@@ -48,7 +48,7 @@ export class OllamaEmbeddingService extends BaseEmbeddingService {
       if (error.code === 'ECONNREFUSED') {
         throw new Error(
           `Cannot connect to Ollama at ${this.url}. ` +
-          `Please ensure Ollama is running (ollama serve)`
+          'Please ensure Ollama is running (ollama serve)'
         );
       }
 

@@ -1,5 +1,4 @@
 import express from 'express';
-import { createServer } from 'http';
 import type { Server } from 'http';
 
 export interface CallbackResult {
@@ -18,6 +17,8 @@ export class CallbackServer {
   private server: Server | null = null;
   private port: number;
   private callbackPath: string;
+  private requestCount: number = 0;
+  private readonly MAX_REQUESTS = 10;
 
   constructor(port: number = 8080, callbackPath: string = '/callback') {
     this.port = port;
@@ -85,7 +86,16 @@ export class CallbackServer {
 
       // Handle OAuth callback
       this.app.get(this.callbackPath, (req, res) => {
-        if (resolved) return;
+        // Rate limiting: prevent callback spam/DoS
+        if (this.requestCount++ > this.MAX_REQUESTS) {
+          res.status(429).send('Too many requests');
+          return;
+        }
+
+        if (resolved) {
+          res.status(400).send('Already processed');
+          return;
+        }
         resolved = true;
 
         const { code, state, error, error_description } = req.query;
@@ -135,6 +145,7 @@ export class CallbackServer {
       this.server.on('error', (err: any) => {
         if (!resolved) {
           resolved = true;
+          this.stop(); // Always stop server on error
           if (err.code === 'EADDRINUSE') {
             reject(new Error(`Port ${this.port} is already in use. Please close other applications or choose a different port.`));
           } else {
@@ -152,7 +163,7 @@ export class CallbackServer {
     if (this.server) {
       this.server.close();
       this.server = null;
-      console.log(`🛑 Callback server stopped`);
+      console.log('🛑 Callback server stopped');
     }
   }
 

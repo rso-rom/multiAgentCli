@@ -91,7 +91,7 @@ export class MarkdownWorkflowParser {
     // Build steps from sections
     const steps: WorkflowStep[] = sections.map(section => {
       // Replace variables in content
-      let input = this.replaceVariables(section.content, variables);
+      const input = this.replaceVariables(section.content, variables);
 
       // Detect context references (e.g., {architect}, {backend})
       const contextKeys = this.extractContextKeys(section.content);

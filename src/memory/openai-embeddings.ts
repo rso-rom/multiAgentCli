@@ -76,7 +76,7 @@ export class OpenAIEmbeddingService extends BaseEmbeddingService {
       if (error.response?.status === 404) {
         throw new Error(
           `OpenAI model ${this.model} not found. ` +
-          `Available models: text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002`
+          'Available models: text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002'
         );
       }
 

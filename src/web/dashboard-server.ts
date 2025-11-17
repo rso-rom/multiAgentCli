@@ -100,7 +100,7 @@ export class DashboardServer {
 
   async stop(): Promise<void> {
     return new Promise((resolve) => {
-      this.io.close(() => {
+      void this.io.close(() => {
         this.server.close(() => {
           console.log('\n🌐 Dashboard server stopped');
           resolve();

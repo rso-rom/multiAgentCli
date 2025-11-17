@@ -60,12 +60,12 @@ export class OAuth2BrowserFlow {
 
       // Token expired but has refresh token
       if (existingToken.refresh_token) {
-        console.log(`🔄 Token expired, refreshing...`);
+        console.log('🔄 Token expired, refreshing...');
         try {
           const refreshedToken = await this.refreshToken(existingToken.refresh_token);
           return refreshedToken;
-        } catch (err) {
-          console.log(`⚠️  Token refresh failed, starting new authentication...`);
+        } catch (_err) {
+          console.log('⚠️  Token refresh failed, starting new authentication...');
         }
       }
     }
@@ -107,18 +107,18 @@ export class OAuth2BrowserFlow {
       }
 
       // Exchange code for token
-      console.log(`🔄 Exchanging authorization code for token...`);
+      console.log('🔄 Exchanging authorization code for token...');
       const token = await this.exchangeCodeForToken(result.code);
 
       // Save token
       await globalTokenStore.saveToken(this.config.provider, token);
 
-      console.log(`✅ Successfully authenticated! Token saved for future use.`);
+      console.log('✅ Successfully authenticated! Token saved for future use.');
       return token;
 
-    } catch (err) {
+    } finally {
+      // Always stop server, even on success (prevents hanging)
       callbackServer.stop();
-      throw err;
     }
   }
 
@@ -151,7 +151,7 @@ export class OAuth2BrowserFlow {
       return token;
 
     } catch (err: any) {
-      console.error(`❌ Failed to refresh token:`, err.response?.data || err.message);
+      console.error('❌ Failed to refresh token:', err.response?.data || err.message);
       throw new Error('Token refresh failed');
     }
   }
@@ -230,9 +230,9 @@ export class OAuth2BrowserFlow {
   private async openBrowser(url: string): Promise<void> {
     const command = process.platform === 'win32' ? 'start'
       : process.platform === 'darwin' ? 'open'
-      : 'xdg-open';
+        : 'xdg-open';
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       exec(`${command} "${url}"`, (err) => {
         if (err) {
           console.log(`\n⚠️  Could not open browser automatically. Please visit:\n${url}\n`);

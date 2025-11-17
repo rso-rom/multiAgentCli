@@ -105,7 +105,7 @@ export class Workflow {
       return await this.executeParallel();
     }
 
-    console.log(`📝 Execution mode: sequential\n`);
+    console.log('📝 Execution mode: sequential\n');
 
     // Execute steps sequentially
     for (const step of this.definition.steps) {
