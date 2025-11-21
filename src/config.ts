@@ -20,7 +20,9 @@ export function getBackend(name?: string) {
 
   if (backend === 'openwebui') {
     return new OpenWebUIBackend(
-      process.env.OPENWEBUI_URL || 'http://localhost:3000/api/v1/generate'
+      process.env.OPENWEBUI_URL || 'http://localhost:3000/api/v1/chat/completions',
+      process.env.OPENWEBUI_API_KEY,
+      process.env.OPENWEBUI_MODEL || 'llama3'
     );
   }
 
