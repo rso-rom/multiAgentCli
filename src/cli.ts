@@ -4,6 +4,7 @@ import { getBackendName } from './config';
 import { AnthropicBackend } from './backends/anthropic';
 import { globalTokenStore } from './auth/token-store';
 import { SetupWizard } from './setup/setup-wizard';
+import { AutoConfigurator } from './setup/auto-configurator';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -136,6 +137,55 @@ tokenCmd
     await globalTokenStore.initialize();
     await globalTokenStore.clearAll();
     console.log('✅ All tokens cleared');
+    process.exit(0);
+  });
+
+// Auto-configuration commands
+const configCmd = program
+  .command('configure')
+  .description('Auto-configure a new backend using AI');
+
+configCmd
+  .command('backend <name>')
+  .description('Auto-configure a specific backend (e.g., gemini, mistral)')
+  .option('--api-key <key>', 'API key for the backend')
+  .action(async (name: string, opts) => {
+    try {
+      const configurator = new AutoConfigurator();
+      const success = await configurator.configure(name, opts.apiKey);
+      process.exit(success ? 0 : 1);
+    } catch (err: any) {
+      console.error('❌ Auto-configuration failed:', err.message);
+      process.exit(1);
+    }
+  });
+
+configCmd
+  .command('interactive')
+  .alias('wizard')
+  .description('Interactive auto-configuration wizard')
+  .action(async () => {
+    try {
+      const configurator = new AutoConfigurator();
+      await configurator.interactiveConfiguration();
+      process.exit(0);
+    } catch (err: any) {
+      console.error('❌ Configuration failed:', err.message);
+      process.exit(1);
+    }
+  });
+
+configCmd
+  .command('list')
+  .description('List backends that can be auto-configured')
+  .action(async () => {
+    const backends = await AutoConfigurator.listAvailableBackends();
+    console.log('\n🤖 Backends that can be auto-configured:\n');
+    for (const backend of backends) {
+      console.log(`  • ${backend.charAt(0).toUpperCase() + backend.slice(1)}`);
+    }
+    console.log(`\nUsage: cacli configure backend <name>`);
+    console.log(`   or: cacli configure interactive\n`);
     process.exit(0);
   });
 
