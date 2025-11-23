@@ -18,9 +18,10 @@ program
   .description('cacli (Coding Assistent CLI): Multi-Agent AI Orchestration with Dynamic Workflow Generation')
   .version('3.0.0')
   .option('-b, --backend <name>', 'override backend (ollama|openwebui|openai|claude|anthropic|mock)')
+  .option('--enable-tools', 'enable agents to use system tools (curl, git, npm, etc.)')
   .action((opts) => {
     // Default action: start REPL
-    const session = new ReplSession(opts.backend);
+    const session = new ReplSession(opts.backend, opts.enableTools);
     session.run().catch(err => {
       console.error('Error:', err);
       process.exit(1);
@@ -32,9 +33,13 @@ program
   .description('One-off question without starting REPL')
   .argument('<prompt...>', 'prompt to send to model')
   .option('-b, --backend <name>')
+  .option('--enable-tools', 'enable agents to use system tools')
   .action(async (promptParts: string[], opts) => {
     const prompt = promptParts.join(' ');
-    const session = new ReplSession(opts.backend);
+    const session = new ReplSession(opts.backend, opts.enableTools);
+    if (opts.enableTools) {
+      await session.setupToolCapabilities();
+    }
     await session.ask(prompt);
     process.exit(0);
   });

@@ -8,6 +8,8 @@ import { runHost, runDocker } from './utils/run';
 import { eventBus } from './orchestrator/event-system';
 import { AskStoreHandler } from './orchestrator/ask-store-handler';
 import { MemoryManager } from './memory/memory-manager';
+import { ToolExecutor } from './utils/tool-executor';
+import { CapabilityDetector } from './utils/capability-detector';
 
 function readFileSafe(p: string): string | null {
   try {
@@ -25,10 +27,13 @@ export class ReplSession {
   lastModelOutput?: string;
   allowWeb: boolean = false;
   askStoreHandler?: AskStoreHandler;
+  toolExecutor?: ToolExecutor;
+  enableTools: boolean = false;
 
-  constructor(backendName?: string) {
+  constructor(backendName?: string, enableTools?: boolean) {
     this.backendName = backendName;
     this.backend = getBackend(backendName);
+    this.enableTools = enableTools || process.env.ENABLE_AGENT_TOOLS === 'true';
   }
 
   /**
@@ -46,12 +51,62 @@ export class ReplSession {
     }
   }
 
+  /**
+   * Setup tool capabilities for agents
+   */
+  async setupToolCapabilities(): Promise<void> {
+    if (!this.enableTools) {
+      return;
+    }
+
+    console.log('\n🔍 Detecting system capabilities for agents...\n');
+
+    const detector = new CapabilityDetector();
+
+    // Check if permissions already exist
+    const permissionsPath = path.join(process.cwd(), '.cacli-permissions.json');
+    try {
+      await detector.loadPermissions(permissionsPath);
+      const permitted = detector.getPermittedCapabilities();
+
+      if (permitted.length > 0) {
+        console.log(`✅ Loaded ${permitted.length} tool permissions from file\n`);
+        this.toolExecutor = new ToolExecutor(detector);
+        return;
+      }
+    } catch {
+      // No existing permissions, continue to detection
+    }
+
+    // Detect all available tools
+    const capabilities = await detector.detectAll();
+
+    // Request user permissions
+    const permissions = await detector.requestPermissions(capabilities);
+
+    if (permissions.size === 0) {
+      console.log('⚠️  No tools permitted. Agents will work without system tools.\n');
+      return;
+    }
+
+    // Save permissions for future use
+    await detector.savePermissions(permissionsPath);
+    console.log(`💾 Permissions saved to .cacli-permissions.json\n`);
+
+    // Create tool executor with permissions
+    this.toolExecutor = new ToolExecutor(detector);
+    console.log(`✅ Agents can now use ${permissions.size} system tools\n`);
+  }
+
   async run(): Promise<void> {
     console.log(`🧠 cacli REPL (backend=${this.backendName || process.env.MODEL_BACKEND || 'mock'})`);
     console.log('Type "/help" for commands, or just start typing to ask questions');
 
     // Initialize ask-store handler
     await this.initializeAskStore();
+
+    // Setup tool capabilities if enabled
+    await this.setupToolCapabilities();
 
     while (true) {
       const { cmd } = await inquirer.prompt([
@@ -115,6 +170,8 @@ export class ReplSession {
       await this.cmdListWorkflows();
     } else if (verb === 'tools' || verb === 't') {
       await this.cmdTools();
+    } else if (verb === 'agenttools' || verb === 'at') {
+      await this.cmdAgentTools();
     } else if (verb === 'history' || verb === 'hist') {
       await this.cmdHistory(arg);
     } else if (verb === 'token') {
@@ -318,6 +375,7 @@ export class ReplSession {
   }
 
   printHelp(): void {
+    const toolStatus = this.toolExecutor ? '✅ ENABLED' : '❌ disabled';
     console.log(`
 ╭─────────────────────────────────────────────────────────────╮
 │  🧠 CAILI - Natural Language + Slash Commands              │
@@ -330,7 +388,11 @@ export class ReplSession {
     > Was ist TypeScript?
     > Erkläre mir async/await
     > Wie erstelle ich eine REST API?
-
+${this.toolExecutor ? `
+  🔧 Agent Tools: ${toolStatus}
+     Agents can use system tools (curl, git, npm, etc.)
+     to gather real-time information and execute tasks.
+` : ''}
 📂 FILE OPERATIONS
   /load <file>      Load file into session (alias: /l)
   /save             Save last output to file (alias: /s)
@@ -340,7 +402,7 @@ export class ReplSession {
 🤖 AI INTERACTION
   /ask <prompt>     Explicit ask (alias: /a)
   /web on|off       Toggle web search (alias: /w)
-  /webs <query>     Direct web search (alias: /ws)
+  /webs <query>     Direct web search (alias: /ws)${this.toolExecutor ? '\n  /agenttools       Show available agent tools and permissions' : ''}
 
 🎯 WORKFLOWS
   /workflow <name> [args]   Run markdown workflow (alias: /wf)
@@ -485,6 +547,7 @@ Return the full file in a code block.`;
         metadata: {
           command: 'ask',
           webEnabled: this.allowWeb,
+          toolsEnabled: !!this.toolExecutor,
           file: this.currentFile
         },
         timestamp: new Date()
@@ -495,12 +558,83 @@ Return the full file in a code block.`;
       console.log('⤴️ Asking model with web access...');
       const { runWebAgent } = await import('./tools/webagent');
       await runWebAgent(this.backend, prompt);
+    } else if (this.toolExecutor) {
+      // Agent with tool use
+      await this.askWithTools(prompt);
     } else {
       console.log('⤴️ Asking model...');
       const onStream = (chunk: string) => process.stdout.write(chunk);
       const maybe = await this.backend.chat(prompt, onStream);
       if (maybe && typeof maybe === 'string') console.log(maybe);
       console.log('');
+    }
+  }
+
+  /**
+   * Ask with tool use capability (agentic mode)
+   */
+  private async askWithTools(prompt: string): Promise<void> {
+    console.log('⤴️ Asking model with tool access...\n');
+
+    // Build enhanced prompt with tool instructions
+    const enhancedPrompt = `${ToolExecutor.buildToolUsePrompt()}
+
+User question: ${prompt}
+
+You can use the tools above to gather information, execute code, or perform tasks.
+If you need real-time data, API information, or want to test code, use the appropriate tools.
+Provide your answer based on tool results when available.`;
+
+    // Agentic loop: LLM can use tools iteratively
+    let iteration = 0;
+    const maxIterations = 3;
+    let currentPrompt = enhancedPrompt;
+
+    while (iteration < maxIterations) {
+      iteration++;
+
+      // Get LLM response
+      let response = '';
+      const onStream = (chunk: string) => {
+        response += chunk;
+        process.stdout.write(chunk);
+      };
+
+      const maybe = await this.backend.chat(currentPrompt, onStream);
+      if (maybe && typeof maybe === 'string') response = maybe;
+
+      // Check for tool calls
+      const toolCalls = this.toolExecutor!.parseToolCalls(response);
+
+      if (toolCalls.length === 0) {
+        // No more tool calls - agent is done
+        console.log('\n');
+        break;
+      }
+
+      // Execute tools
+      console.log(`\n\n🔧 Executing ${toolCalls.length} tool(s)...\n`);
+      const toolResults = await this.toolExecutor!.executeToolCalls(response);
+
+      // Build feedback for next iteration
+      let feedback = '\nTool execution results:\n\n';
+      for (const [key, result] of toolResults.entries()) {
+        if (result.success) {
+          feedback += `✅ ${key}:\n${result.output.substring(0, 1000)}\n\n`;
+        } else {
+          feedback += `❌ ${key} failed: ${result.error}\n\n`;
+        }
+      }
+
+      feedback += '\nBased on these tool results, please provide your final answer to the user.\n';
+
+      // Continue conversation with tool results
+      currentPrompt = feedback;
+      console.log('\n💭 Agent processing results...\n');
+    }
+
+    if (iteration >= maxIterations) {
+      console.log('\n⚠️  Maximum iterations reached\n');
     }
   }
 
@@ -675,6 +809,40 @@ Return the full file in a code block.`;
 
     const status = globalToolRegistry.getStatus();
     console.log(`\nTotal: ${status.total} tools (${status.available} available, ${status.unavailable} unavailable)\n`);
+  }
+
+  /**
+   * Show agent tools status and permissions
+   */
+  async cmdAgentTools(): Promise<void> {
+    if (!this.toolExecutor) {
+      console.log('\n❌ Agent tools not enabled\n');
+      console.log('To enable agent tools:');
+      console.log('  1. Start REPL with --enable-tools flag:');
+      console.log('     cacli --enable-tools\n');
+      console.log('  2. Or set environment variable:');
+      console.log('     export ENABLE_AGENT_TOOLS=true\n');
+      console.log('  3. Or run: cacli capabilities grant\n');
+      return;
+    }
+
+    console.log('\n🤖 Agent Tools Status\n');
+
+    const tools = this.toolExecutor.getAvailableTools();
+
+    console.log('Available Tools:');
+    tools.forEach(tool => {
+      console.log(`  ✅ ${tool.name} - ${tool.description}`);
+    });
+
+    console.log(`\nTotal: ${tools.length} tools available for agents\n`);
+
+    console.log('📋 Permission File: .cacli-permissions.json');
+    console.log('\nManage permissions:');
+    console.log('  cacli capabilities scan    - Scan system');
+    console.log('  cacli capabilities grant   - Grant permissions');
+    console.log('  cacli capabilities list    - List permissions');
+    console.log('  cacli capabilities revoke  - Revoke all\n');
   }
 
   async cmdHistory(query?: string): Promise<void> {
