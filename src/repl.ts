@@ -715,10 +715,27 @@ You can use the tools above to gather information, execute code, or perform task
 If you need real-time data, API information, or want to test code, use the appropriate tools.
 Provide your answer based on tool results when available.`;
 
+    // Check if we've learned this task before (self-learning)
+    const learned = await this.checkLearnedKnowledge(prompt);
+    if (learned && learned.similarity > 0.8) {
+      const learnedAt = new Date(learned.metadata.learned_at).toLocaleString();
+      console.log(`💡 I remember learning this before! (${(learned.similarity * 100).toFixed(1)}% match)\n`);
+      console.log(`📅 Learned: ${learnedAt}\n`);
+      console.log(`📚 Using saved knowledge:\n`);
+      console.log(learned.text);
+      console.log('\n');
+      return;
+    }
+
     // Agentic loop: LLM can use tools iteratively
     let iteration = 0;
     const maxIterations = 3;
     let currentPrompt = enhancedPrompt;
+
+    // Track learning for self-learning feature
+    let usedCurlWget = false;
+    let tutorialUrl = '';
+    let executedSteps: string[] = [];
 
     while (iteration < maxIterations) {
       iteration++;
@@ -757,6 +774,16 @@ Provide your answer based on tool results when available.`;
         for (const [key, result] of toolResults.entries()) {
           if (result.success) {
             feedback += `✅ ${key}:\n${result.output.substring(0, 1000)}\n\n`;
+
+            // Track curl/wget for self-learning
+            if (key.includes('curl') || key.includes('wget')) {
+              usedCurlWget = true;
+              // Try to extract URL from tool call
+              const urlMatch = key.match(/https?:\/\/[^\s]+/);
+              if (urlMatch && !tutorialUrl) {
+                tutorialUrl = urlMatch[0];
+              }
+            }
           } else {
             feedback += `❌ ${key} failed: ${result.error}\n\n`;
           }
@@ -788,9 +815,18 @@ Provide your answer based on tool results when available.`;
           try {
             const result = await this.executeGUITool(call.action, call.parameters);
             feedback += `✅ [GUI] ${call.action}: ${result}\n\n`;
+
+            // Track GUI steps for self-learning
+            executedSteps.push(`${call.action}: ${JSON.stringify(call.parameters)}`);
           } catch (error: any) {
             feedback += `❌ [GUI] ${call.action} failed: ${error.message}\n\n`;
           }
+        }
+
+        // Save learned knowledge if agent used both curl/wget and GUI
+        if (usedCurlWget && executedSteps.length > 0) {
+          const stepsText = executedSteps.map((s, i) => `${i + 1}. ${s}`).join('\n');
+          await this.saveLearnedKnowledge(prompt, tutorialUrl || 'unknown', stepsText);
         }
       }
 
@@ -882,6 +918,75 @@ Provide your answer based on tool results when available.`;
 
       default:
         throw new Error(`Unknown GUI action: ${action}`);
+    }
+  }
+
+  /**
+   * Check if we've learned this task before (semantic search)
+   */
+  private async checkLearnedKnowledge(query: string): Promise<{
+    id: string;
+    text: string;
+    similarity: number;
+    metadata: any;
+  } | null> {
+    if (!this.askStoreHandler || !this.askStoreHandler.isEnabled()) {
+      return null;
+    }
+
+    try {
+      // Search for similar learned tasks
+      const results = await this.askStoreHandler.searchPrompts(query, 5);
+
+      // Filter only learned tasks with high similarity
+      const learned = results.find(r =>
+        r.metadata?.type === 'learned_task' &&
+        r.similarity > 0.8
+      );
+
+      return learned || null;
+    } catch (error: any) {
+      console.error(`❌ Failed to check learned knowledge: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Save learned knowledge to long-term memory
+   */
+  private async saveLearnedKnowledge(
+    task: string,
+    tutorialUrl: string,
+    steps: string
+  ): Promise<void> {
+    if (!this.askStoreHandler || !this.askStoreHandler.isEnabled()) {
+      return;
+    }
+
+    try {
+      const learningEntry = `Task: ${task}
+
+Tutorial: ${tutorialUrl}
+
+Steps learned:
+${steps}`;
+
+      await this.askStoreHandler.storePrompt({
+        agent: 'self-learning',
+        text: learningEntry,
+        timestamp: new Date(),
+        metadata: {
+          type: 'learned_task',
+          task: task,
+          tutorialUrl: tutorialUrl,
+          learned_at: new Date().toISOString(),
+          source: 'emergent_self_learning'
+        }
+      });
+
+      console.log(`💡 Knowledge saved for future use!\n`);
+    } catch (error: any) {
+      console.error(`❌ Failed to save learned knowledge: ${error.message}`);
     }
   }
 
