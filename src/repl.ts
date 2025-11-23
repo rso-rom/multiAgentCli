@@ -192,11 +192,6 @@ export class ReplSession {
    * Setup Multi-Agent system
    */
   async setupMultiAgent(): Promise<void> {
-    // Multi-agent is enabled if tools or GUI is enabled
-    if (!this.enableTools && !this.enableGui) {
-      return;
-    }
-
     // Prevent double initialization
     if (this.enableMultiAgent && this.masterAgent) {
       return;
@@ -228,7 +223,13 @@ export class ReplSession {
     this.masterAgent.spawnAgent(generalAgent);
 
     console.log('✅ Multi-Agent system ready with 5 worker agents\n');
-    console.log('💡 Use /agents to manage agents, /task to delegate tasks\n');
+    if (this.enableTools) {
+      console.log('🛠️  System tools enabled (git, npm, curl, etc.)\n');
+    }
+    if (this.enableGui) {
+      console.log('🎨 GUI control enabled (Photoshop, GIMP, etc.)\n');
+    }
+    console.log('💡 Just type your task - auto-routing will handle the rest!\n');
   }
 
   async run(): Promise<void> {
