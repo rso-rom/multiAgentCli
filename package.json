@@ -1,7 +1,7 @@
 {
   "name": "cacli",
-  "version": "4.0.0",
-  "description": "cacli (Coding Assistent CLI): Multi-Agent AI Orchestration with Master Agent SPOC, Real-time Inter-Agent Communication, Dynamic Workflow Generation, Self-Learning, and Natural Language Interface",
+  "version": "4.1.0",
+  "description": "cacli (Coding Assistent CLI): Multi-Agent AI Orchestration with Intelligent Auto-Routing, Master Agent SPOC, Real-time Inter-Agent Communication, Dynamic Workflow Generation, Self-Learning, and Natural Language Interface",
   "keywords": [
     "ai",
     "cli",

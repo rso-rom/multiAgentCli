@@ -17,6 +17,7 @@ import { ImageEditorAutomator } from './gui/app-automators/image-editor-automato
 import { MasterAgent, globalMasterAgent } from './orchestrator/master-agent';
 import { FrontendAgent, BackendAgent, DevOpsAgent, DesignAgent, GeneralAgent } from './orchestrator/example-agents';
 import { AgentCapability } from './orchestrator/worker-agent';
+import { TaskDetector, globalTaskDetector } from './orchestrator/task-detector';
 
 function readFileSafe(p: string): string | null {
   try {
@@ -741,6 +742,33 @@ Return the full file in a code block.`;
       });
     }
 
+    // INTELLIGENT AUTO-ROUTING: Check if this is a task that should be delegated
+    if (this.enableMultiAgent && this.masterAgent) {
+      const detection = globalTaskDetector.detect(prompt);
+
+      if (detection.isTask && detection.confidence >= 0.6) {
+        // This looks like a task - delegate to Master Agent automatically!
+        console.log(`\n🎯 Task detected (${(detection.confidence * 100).toFixed(0)}% confidence)`);
+        if (detection.reasoning) {
+          console.log(`   Reason: ${detection.reasoning}`);
+        }
+        console.log(`   Routing to Multi-Agent System...\n`);
+
+        const result = await this.masterAgent.executeTask(prompt);
+
+        if (result.success && result.output) {
+          console.log(`\n📦 Result:\n`);
+          console.log(JSON.stringify(result.output, null, 2));
+          console.log('');
+        }
+        return; // Task handled by agents
+      } else if (detection.confidence >= 0.4) {
+        // Borderline - inform user they can use /task if needed
+        console.log(`\n💡 Tip: If this is a task, use /task for agent delegation (${(detection.confidence * 100).toFixed(0)}% task-like)`);
+      }
+    }
+
+    // Not a task or Multi-Agent not available - use normal flow
     if (this.allowWeb) {
       console.log('⤴️ Asking model with web access...');
       const { runWebAgent } = await import('./tools/webagent');
