@@ -15,6 +15,7 @@ import * as path from 'path';
 import inquirer from 'inquirer';
 import axios from 'axios';
 import { ToolExecutor } from '../utils/tool-executor';
+import { CapabilityDetector } from '../utils/capability-detector';
 
 export interface BackendConfig {
   name: string;
@@ -49,6 +50,11 @@ export class AutoConfigurator {
     console.log(`📡 Using ${this.llm.constructor.name} to research and generate code...\n`);
 
     try {
+      // Step 0: Detect system capabilities and request permissions (if using agentic tools)
+      if (this.useAgenticTools) {
+        await this.setupCapabilities();
+      }
+
       // Step 1: Research the backend API
       const config = await this.researchBackend(backendName);
 
@@ -103,6 +109,35 @@ export class AutoConfigurator {
     } catch (error: any) {
       console.error(`\n❌ Auto-configuration failed: ${error.message}`);
       return false;
+    }
+  }
+
+  /**
+   * Setup system capabilities detection and permissions
+   */
+  private async setupCapabilities(): Promise<void> {
+    console.log('\n🔍 Detecting system capabilities...\n');
+
+    const detector = new CapabilityDetector();
+
+    // Detect all available tools
+    const capabilities = await detector.detectAll();
+
+    // Request user permissions
+    const permissions = await detector.requestPermissions(capabilities);
+
+    if (permissions.size === 0) {
+      console.log('⚠️  No tools permitted. Using safe defaults only.\n');
+      // Create tool executor without capability detector (will skip permission checks)
+      this.toolExecutor = new ToolExecutor();
+    } else {
+      // Create tool executor with capability detector
+      this.toolExecutor = new ToolExecutor(detector);
+
+      // Save permissions for future use
+      const permissionsPath = path.join(this.projectRoot, '.cacli-permissions.json');
+      await detector.savePermissions(permissionsPath);
+      console.log(`💾 Permissions saved to .cacli-permissions.json\n`);
     }
   }
 

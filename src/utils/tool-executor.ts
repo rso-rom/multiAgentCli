@@ -6,6 +6,7 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { CapabilityDetector } from './capability-detector';
 
 const execAsync = promisify(exec);
 
@@ -28,6 +29,11 @@ export class ToolExecutor {
   private allowedCommands = ['curl', 'wget', 'http'];
   private maxOutputLength = 10000; // Limit output to prevent overload
   private timeout = 10000; // 10 second timeout
+  private capabilityDetector?: CapabilityDetector;
+
+  constructor(capabilityDetector?: CapabilityDetector) {
+    this.capabilityDetector = capabilityDetector;
+  }
 
   /**
    * Get available tools that LLM can use
@@ -465,6 +471,18 @@ export class ToolExecutor {
    * Execute a tool by name
    */
   async executeTool(toolName: string, args: string): Promise<ToolResult> {
+    // Check permissions if capability detector is available
+    if (this.capabilityDetector) {
+      const canUse = await this.capabilityDetector.canUse(toolName);
+      if (!canUse) {
+        return {
+          success: false,
+          output: '',
+          error: `Tool '${toolName}' is not available or permission was not granted`
+        };
+      }
+    }
+
     const tools = this.getAvailableTools();
     const tool = tools.find(t => t.name === toolName);
 

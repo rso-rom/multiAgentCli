@@ -5,6 +5,8 @@ import { AnthropicBackend } from './backends/anthropic';
 import { globalTokenStore } from './auth/token-store';
 import { SetupWizard } from './setup/setup-wizard';
 import { AutoConfigurator } from './setup/auto-configurator';
+import { CapabilityDetector } from './utils/capability-detector';
+import * as path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -201,6 +203,98 @@ configCmd
     console.log(`\nUsage: cacli configure backend <name>`);
     console.log(`   or: cacli configure interactive\n`);
     process.exit(0);
+  });
+
+// Capability management commands
+const capabilityCmd = program
+  .command('capabilities')
+  .alias('caps')
+  .description('Manage system capabilities and tool permissions');
+
+capabilityCmd
+  .command('scan')
+  .description('Scan system for available tools and show report')
+  .action(async () => {
+    try {
+      const detector = new CapabilityDetector();
+      const capabilities = await detector.detectAll();
+      const report = detector.generateReport(capabilities);
+      console.log(report);
+      process.exit(0);
+    } catch (err: any) {
+      console.error('❌ Capability scan failed:', err.message);
+      process.exit(1);
+    }
+  });
+
+capabilityCmd
+  .command('grant')
+  .description('Grant tool permissions interactively')
+  .action(async () => {
+    try {
+      const detector = new CapabilityDetector();
+      const capabilities = await detector.detectAll();
+      const permissions = await detector.requestPermissions(capabilities);
+
+      const permissionsPath = path.join(process.cwd(), '.cacli-permissions.json');
+      await detector.savePermissions(permissionsPath);
+
+      console.log(`\n✅ Permissions saved to .cacli-permissions.json`);
+      console.log(`   Granted: ${permissions.size} tools\n`);
+      process.exit(0);
+    } catch (err: any) {
+      console.error('❌ Permission grant failed:', err.message);
+      process.exit(1);
+    }
+  });
+
+capabilityCmd
+  .command('revoke')
+  .description('Revoke all tool permissions')
+  .action(async () => {
+    try {
+      const permissionsPath = path.join(process.cwd(), '.cacli-permissions.json');
+      const fs = await import('fs');
+
+      if (fs.existsSync(permissionsPath)) {
+        fs.unlinkSync(permissionsPath);
+        console.log('✅ All tool permissions revoked');
+      } else {
+        console.log('⚠️  No permissions file found');
+      }
+      process.exit(0);
+    } catch (err: any) {
+      console.error('❌ Permission revoke failed:', err.message);
+      process.exit(1);
+    }
+  });
+
+capabilityCmd
+  .command('list')
+  .description('List currently granted tool permissions')
+  .action(async () => {
+    try {
+      const detector = new CapabilityDetector();
+      const permissionsPath = path.join(process.cwd(), '.cacli-permissions.json');
+
+      await detector.loadPermissions(permissionsPath);
+      const permitted = detector.getPermittedCapabilities();
+
+      if (permitted.length === 0) {
+        console.log('\n📋 No tool permissions granted\n');
+        console.log('Run: cacli capabilities grant\n');
+      } else {
+        console.log('\n📋 Granted Tool Permissions:\n');
+        for (const tool of permitted) {
+          console.log(`  ✅ ${tool}`);
+        }
+        console.log(`\n   Total: ${permitted.length} tools\n`);
+      }
+      process.exit(0);
+    } catch (err: any) {
+      console.error('❌ Failed to list permissions:', err.message);
+      process.exit(1);
+    }
   });
 
 program.parse(process.argv);

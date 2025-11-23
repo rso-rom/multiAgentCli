@@ -29,15 +29,49 @@ LLM: "Basierend auf der aktuellen Dokumentation..."
 
 ## 🚀 Wie funktioniert es?
 
-### 1. LLM bekommt Tools
+### 0. System-Capabilities erkennen (NEU! 🎉)
+
+Bevor das LLM Tools nutzen kann, erkennt das System verfügbare Tools und fragt um Erlaubnis:
+
+```
+🔍 Detecting system capabilities...
+
+📋 Detected System Capabilities:
+
+Development Tools:
+  ✅ vim (VIM - Vi IMproved 8.2)
+  ✅ nano (GNU nano 5.4)
+
+Package Managers:
+  ✅ npm (9.6.7)
+
+Version Control:
+  ✅ git (git version 2.39.2)
+
+? Allow AI agents to use these tools?
+  ✅ Allow all detected tools
+  ⚙️  Select specific tools
+  ❌ No, use only safe defaults
+```
+
+**Warum wichtig?**
+- 🔒 **Sicherheit**: Du entscheidest, welche Tools das LLM nutzen darf
+- 🎯 **Transparenz**: Siehst genau, was auf deinem System verfügbar ist
+- 💾 **Speichern**: Einmal erlaubt, wird nicht mehr gefragt (`.cacli-permissions.json`)
+
+Mehr Details: [Capability Detection System](./capability-detection.md)
+
+### 1. LLM bekommt erlaubte Tools
 
 Das LLM wird informiert, welche Tools verfügbar sind:
 
 ```typescript
-Tools available:
+Tools available (with user permission):
 - curl: Fetch web content
 - wget: Download files
 - http_get: Simple HTTP requests
+- git: Clone repositories
+- npm: Query npm registry
 
 Format: [TOOL:curl:https://example.com]
 ```
