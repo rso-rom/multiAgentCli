@@ -465,19 +465,19 @@ let usedCurlWget = false;
 let tutorialUrl = '';
 let executedSteps: string[] = [];
 
-// Lines 778-786 - curl/wget tracken
+// Lines 762-768 - curl/wget tracken
 if (key.includes('curl') || key.includes('wget')) {
   usedCurlWget = true;
   tutorialUrl = extractedUrl; // Tutorial URL speichern
 }
 
-// Lines 819-830 - GUI steps tracken
+// Lines 793, 800-802 - GUI steps tracken
 executedSteps.push(`${call.action}: ${JSON.stringify(call.parameters)}`);
 ```
 
 **3. Nach der Ausführung - Wissen speichern:**
 ```typescript
-// src/repl.ts Lines 826-830
+// src/repl.ts Lines 800-802
 if (usedCurlWget && executedSteps.length > 0) {
   await this.saveLearnedKnowledge(prompt, tutorialUrl, stepsText);
   console.log('💡 Knowledge saved for future use!');
@@ -513,7 +513,7 @@ Steps learned:
 #### Semantic Search:
 
 ```typescript
-// src/repl.ts Lines 888-916
+// src/repl.ts Lines 927-952
 async checkLearnedKnowledge(query: string) {
   const results = await this.askStoreHandler.searchPrompts(query, 5);
 
@@ -588,12 +588,12 @@ Self-Learning nutzt das bestehende Memory System:
 ### Code-Locations
 
 **Core Implementation:**
-- `src/repl.ts:888-916` - `checkLearnedKnowledge()` method
-- `src/repl.ts:918-955` - `saveLearnedKnowledge()` method
+- `src/repl.ts:927-952` - `checkLearnedKnowledge()` method
+- `src/repl.ts:957-991` - `saveLearnedKnowledge()` method
 - `src/repl.ts:718-728` - Knowledge check integration
 - `src/repl.ts:735-738` - Learning tracking variables
-- `src/repl.ts:778-786` - curl/wget tracking
-- `src/repl.ts:819-830` - GUI step tracking + save
+- `src/repl.ts:762-768` - curl/wget tracking
+- `src/repl.ts:793,800-802` - GUI step tracking + save
 
 **Dependencies:**
 - `src/orchestrator/ask-store-handler.ts` - Prompt storage with Qdrant

@@ -130,14 +130,14 @@ cacli
 ### 4. Self-Learning (NEW) ✅
 
 **Implementation:**
-- `src/repl.ts`: Lines 888-955 NEW implementation ✅
-  - `checkLearnedKnowledge()` (lines 888-916)
-  - `saveLearnedKnowledge()` (lines 918-955)
+- `src/repl.ts`: Lines 927-991 NEW implementation ✅
+  - `checkLearnedKnowledge()` (lines 927-952)
+  - `saveLearnedKnowledge()` (lines 957-991)
 - Integration in `askWithTools()`:
   - Lines 718-728: Check learned knowledge before agentic loop ✅
   - Lines 735-738: Track learning variables ✅
-  - Lines 778-786: Track curl/wget usage ✅
-  - Lines 819-830: Track GUI steps and save knowledge ✅
+  - Lines 762-768: Track curl/wget usage ✅
+  - Lines 793, 800-802: Track GUI steps and save knowledge ✅
 
 **How It Works:**
 1. **Before execution:** Searches long-term memory for similar tasks (similarity > 0.8)
