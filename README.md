@@ -53,6 +53,14 @@ Siehe → **[docs/features/natural-workflows.md](docs/features/natural-workflows
 - Sequentielle & parallele Agenten-Ausführung
 - Kontext-Sharing zwischen Agents
 
+### 🔧 **NEU:** Advanced Agent Capabilities
+- **Tool Use**: Agents nutzen curl, git, npm, etc. (`--enable-tools`)
+- **MCP Integration**: VS Code, Obsidian fernsteuern (`--enable-mcp`)
+- **GUI Control**: Photoshop, GIMP automatisieren (`--enable-gui`)
+- **Self-Learning**: Lernt aus Online-Tutorials und speichert Wissen
+
+Siehe → **[docs/features/advanced-agent-capabilities.md](docs/features/advanced-agent-capabilities.md)** & **[FEATURE_STATUS.md](FEATURE_STATUS.md)**
+
 ### 🧠 4-Level Memory System
 - **Short-term**: Session-basiert (LMDB)
 - **Mid-term**: Persistiert über Sessions (LMDB)
@@ -100,6 +108,8 @@ Siehe → **[docs/features/oauth.md](docs/features/oauth.md)**
 ### Features & Nutzung
 | Guide | Inhalt | Link |
 |-------|--------|------|
+| **Advanced Agents** | Tool Use, MCP, GUI, Self-Learning | [docs/features/advanced-agent-capabilities.md](docs/features/advanced-agent-capabilities.md) |
+| **Feature Status** | Vollständiger Implementierungs-Status | [FEATURE_STATUS.md](FEATURE_STATUS.md) |
 | **Memory System** | 4-Ebenen Memory, Qdrant | [docs/features/memory-system.md](docs/features/memory-system.md) |
 | **OAuth2** | Login-Flows, Token-Management | [docs/features/oauth.md](docs/features/oauth.md) |
 | **Vision/Screenshots** | GPT-4o Vision, Copy & Paste | [docs/features/vision.md](docs/features/vision.md) |
@@ -116,6 +126,11 @@ cacli
 # Mit anderem Backend
 cacli -b ollama
 cacli -b openai
+
+# Mit Advanced Agent Capabilities
+cacli --enable-tools                           # System Tools (curl, git, npm)
+cacli --enable-tools --enable-mcp              # + MCP (VS Code, Obsidian)
+cacli --enable-tools --enable-mcp --enable-gui # + GUI Control (Photoshop, GIMP)
 
 # Für Development:
 npm start repl
@@ -233,6 +248,7 @@ caili/
 - ✅ **Slash Commands** - System-Befehle wie in Claude Code
 - ✅ **Markdown Workflows** - `.md` Templates statt `.yml`
 - ✅ **Auto-Detection** - Erkennt Development-Tasks automatisch
+- ✅ **Advanced Agent Capabilities** - Tool Use, MCP, GUI Control, Self-Learning
 - ✅ **npm Package Ready** - Globale Installation mit `npm install -g cacli`
 - ✅ **Dokumentation** - Reorganisiert in docs/setup/ und docs/features/
 

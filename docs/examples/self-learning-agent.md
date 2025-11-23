@@ -436,3 +436,225 @@ Der Agent wird:
 3. Dir interaktiv zeigen!
 
 🤯 **Agents die sich selbst Tools beibringen** - die Zukunft ist jetzt!
+
+---
+
+## 🔧 IMPLEMENTIERUNG (v3.0.0)
+
+### Automatische Wissensspeicherung
+
+**NEU in v3.0:** Self-Learning ist jetzt **vollständig integriert** mit automatischer Wissensspeicherung!
+
+#### Wie es funktioniert:
+
+**1. Vor der Ausführung - Wissen prüfen:**
+```typescript
+// src/repl.ts Lines 718-728
+const learned = await this.checkLearnedKnowledge(prompt);
+if (learned && learned.similarity > 0.8) {
+  console.log(`💡 I remember learning this before! (${similarity}% match)`);
+  console.log(learned.text); // Zeigt gespeicherte Tutorial-Schritte
+  return; // Überspringt re-learning
+}
+```
+
+**2. Während der Ausführung - Lernen tracken:**
+```typescript
+// src/repl.ts Lines 735-738
+let usedCurlWget = false;
+let tutorialUrl = '';
+let executedSteps: string[] = [];
+
+// Lines 778-786 - curl/wget tracken
+if (key.includes('curl') || key.includes('wget')) {
+  usedCurlWget = true;
+  tutorialUrl = extractedUrl; // Tutorial URL speichern
+}
+
+// Lines 819-830 - GUI steps tracken
+executedSteps.push(`${call.action}: ${JSON.stringify(call.parameters)}`);
+```
+
+**3. Nach der Ausführung - Wissen speichern:**
+```typescript
+// src/repl.ts Lines 826-830
+if (usedCurlWget && executedSteps.length > 0) {
+  await this.saveLearnedKnowledge(prompt, tutorialUrl, stepsText);
+  console.log('💡 Knowledge saved for future use!');
+}
+```
+
+#### Storage Format:
+
+Gespeichert wird in **Long-term Memory** (Qdrant):
+
+```typescript
+{
+  agent: 'self-learning',
+  text: `Task: ${task}
+
+Tutorial: ${tutorialUrl}
+
+Steps learned:
+1. launch_app: {"app":"gimp"}
+2. create_image: {"width":800,"height":600}
+3. add_text: {"x":100,"y":100,"text":"Watermark"}
+...`,
+  metadata: {
+    type: 'learned_task',
+    task: task,
+    tutorialUrl: tutorialUrl,
+    learned_at: '2025-11-23T14:30:00.000Z',
+    source: 'emergent_self_learning'
+  }
+}
+```
+
+#### Semantic Search:
+
+```typescript
+// src/repl.ts Lines 888-916
+async checkLearnedKnowledge(query: string) {
+  const results = await this.askStoreHandler.searchPrompts(query, 5);
+
+  // Nur learned tasks mit hoher Similarity
+  const learned = results.find(r =>
+    r.metadata?.type === 'learned_task' &&
+    r.similarity > 0.8
+  );
+
+  return learned || null;
+}
+```
+
+### Beispiel-Workflow
+
+**Erster Durchlauf (Lernen):**
+```bash
+cacli --enable-tools --enable-gui
+
+> Create a watermark in GIMP
+
+Agent:
+[TOOL:curl:https://docs.gimp.org/watermark-tutorial]
+📖 Reading tutorial...
+
+[TOOL:gui:launch_app:{"app":"gimp"}]
+🚀 Launching GIMP...
+
+[TOOL:gui:create_image:{"width":800,"height":600}]
+📄 Creating image...
+
+[TOOL:gui:add_text:{"x":100,"y":100,"text":"© 2025","size":24}]
+📝 Adding watermark...
+
+💡 Knowledge saved for future use!
+```
+
+**Zweiter Durchlauf (Wiederverwenden):**
+```bash
+> Add a watermark to an image in GIMP
+
+Agent:
+💡 I remember learning this before! (93.5% match)
+📅 Learned: 2025-11-23 14:30:15
+
+📚 Using saved knowledge:
+
+Task: Create a watermark in GIMP
+
+Tutorial: https://docs.gimp.org/watermark-tutorial
+
+Steps learned:
+1. launch_app: {"app":"gimp"}
+2. create_image: {"width":800,"height":600}
+3. add_text: {"x":100,"y":100,"text":"© 2025","size":24}
+...
+
+✅ Done! (No need to re-learn)
+```
+
+### Integration mit 4-Level Memory
+
+Self-Learning nutzt das bestehende Memory System:
+
+| Memory Level | Verwendung |
+|--------------|------------|
+| **Short-term** | Aktuelle Session-Variablen (curl output, GUI state) |
+| **Mid-term** | Nicht verwendet |
+| **Long-term** | ✅ **Learned tasks** mit semantic search |
+| **Global** | Könnte für project-übergreifendes Lernen genutzt werden |
+
+### Code-Locations
+
+**Core Implementation:**
+- `src/repl.ts:888-916` - `checkLearnedKnowledge()` method
+- `src/repl.ts:918-955` - `saveLearnedKnowledge()` method
+- `src/repl.ts:718-728` - Knowledge check integration
+- `src/repl.ts:735-738` - Learning tracking variables
+- `src/repl.ts:778-786` - curl/wget tracking
+- `src/repl.ts:819-830` - GUI step tracking + save
+
+**Dependencies:**
+- `src/orchestrator/ask-store-handler.ts` - Prompt storage with Qdrant
+- `src/memory/memory-manager.ts` - 4-level memory system
+- `src/memory/qdrant-memory.ts` - Semantic search backend
+
+### Aktivierung
+
+**Automatisch aktiviert** wenn:
+1. ✅ `--enable-tools` flag (für curl/wget)
+2. ✅ `--enable-gui` flag (für GUI automation)
+3. ✅ Qdrant läuft (für memory storage)
+4. ✅ Ask-store enabled (standardmäßig aktiv)
+
+Kein extra Flag nötig - emergent behavior!
+
+### Environment Variables
+
+```bash
+# Optional: Ask-store deaktivieren (deaktiviert auch Self-Learning)
+export ASK_STORE_ENABLED=false
+
+# Optional: Qdrant URL
+export QDRANT_URL=http://localhost:6333
+
+# Required: Tools + GUI
+export ENABLE_AGENT_TOOLS=true
+export ENABLE_GUI_CONTROL=true
+```
+
+### Limitations
+
+**Aktuell:**
+- ✅ Speichert nur wenn curl/wget + GUI beide verwendet werden
+- ✅ Similarity threshold: 0.8 (80%)
+- ✅ Nur erste gefundene Tutorial-URL wird gespeichert
+- ✅ Keine Unterscheidung zwischen erfolgreichen/fehlgeschlagenen Versuchen
+
+**Potentielle Verbesserungen:**
+- 🔄 Success/failure tracking
+- 🔄 Multiple tutorial URL tracking
+- 🔄 Step-by-step success rates
+- 🔄 Adaptive similarity thresholds
+- 🔄 Feedback loops (Agent learns what worked best)
+
+---
+
+## 🎉 Zusammenfassung - JETZT LIVE!
+
+Mit der **v3.0.0 Implementierung** ist Self-Learning jetzt:
+
+✅ **Vollständig integriert** in REPL
+✅ **Automatisch aktiv** wenn Tools + GUI enabled
+✅ **Persistiert** in Long-term Memory (Qdrant)
+✅ **Semantic search** findet ähnliche Tasks
+✅ **Emergent behavior** - kein Training nötig!
+
+**Das bedeutet:**
+- Agent lernt **automatisch** aus Internet-Tutorials
+- Agent **speichert** gelerntes Wissen
+- Agent **wiederverwendet** Wissen bei ähnlichen Tasks
+- **Null Konfiguration** - funktioniert out-of-the-box!
+
+Siehe auch: **[FEATURE_STATUS.md](../../FEATURE_STATUS.md)** für vollständigen Implementierungs-Status.
