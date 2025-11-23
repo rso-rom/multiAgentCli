@@ -18,6 +18,7 @@ import { MasterAgent, globalMasterAgent } from './orchestrator/master-agent';
 import { FrontendAgent, BackendAgent, DevOpsAgent, DesignAgent, GeneralAgent } from './orchestrator/example-agents';
 import { AgentCapability } from './orchestrator/worker-agent';
 import { TaskDetector, globalTaskDetector } from './orchestrator/task-detector';
+import { LearningCoordinator, globalLearningCoordinator } from './orchestrator/learning-coordinator';
 
 function readFileSafe(p: string): string | null {
   try {
@@ -340,6 +341,16 @@ export class ReplSession {
       await this.cmdBroadcast(arg);
     } else if (verb === 'agent-status') {
       await this.cmdAgentStatus();
+    } else if (verb === 'reflect') {
+      await this.cmdReflect();
+    } else if (verb === 'insights') {
+      await this.cmdInsights();
+    } else if (verb === 'knowledge') {
+      await this.cmdKnowledge(arg);
+    } else if (verb === 'agent-stats') {
+      await this.cmdAgentStats(arg);
+    } else if (verb === 'auto-reflect') {
+      await this.cmdAutoReflect(arg);
     } else if (verb === 'token') {
       await this.cmdToken(arg);
     } else if (verb === 'screenshot' || verb === 'ss' || verb === 'image' || verb === 'img') {
@@ -622,16 +633,30 @@ ${this.toolExecutor ? `     🔧 System Tools: ${toolStatus}
   /help                Show this help (alias: /h)
   /exit                Quit (alias: /quit)
 
-🤖 MULTI-AGENT SYSTEM (when tools/GUI enabled)
+🤖 MULTI-AGENT SYSTEM
   /agents [list]       Show all active worker agents
   /task <description>  Delegate task to best available agent
   /broadcast <message> Send message to all agents
   /agent-status        Show multi-agent system status
 
+🧠 COLLABORATIVE LEARNING & REFLECTION
+  /reflect             Conduct reflection session (analyze agent experiences)
+  /insights            Show recent learning insights from reflection sessions
+  /knowledge <query>   Query collective knowledge from all agents
+  /agent-stats [id]    Show agent learning statistics (all or specific)
+  /auto-reflect <arg>  Enable/disable automatic reflection (on|off|<minutes>)
+
+  Examples:
+    /reflect                    - Analyze all agent experiences
+    /knowledge "React hooks"    - Search what agents learned about React hooks
+    /agent-stats               - Show collective statistics
+    /auto-reflect on           - Enable automatic reflection every 30 min
+
 💡 TIPS:
   • Workflows support arguments via $TASK and $1, $2, etc.
   • Drag & drop image files into terminal to get the path
   • Type "/workflows" to see all available templates
+  • Agents learn from every task and share knowledge automatically
 `);
   }
 
@@ -2281,6 +2306,222 @@ To use vision features:
       } else if (error.message.includes('vision')) {
         console.log(`\n💡 Tip: Switch to a vision-capable model or backend.`);
       }
+    }
+  }
+
+  /**
+   * /reflect - Conduct reflection session
+   */
+  async cmdReflect(): Promise<void> {
+    if (!this.masterAgent) {
+      console.log('❌ Multi-Agent system not available');
+      return;
+    }
+
+    console.log('\n🧠 Conducting reflection session...\n');
+
+    const result = await globalLearningCoordinator.conductReflectionSession();
+
+    // Show summary
+    console.log(result.summary);
+
+    // Show patterns
+    if (result.patterns.length > 0) {
+      console.log('\n📊 Identified Patterns:\n');
+      for (const pattern of result.patterns.slice(0, 5)) {
+        const icon = {
+          success: '✅',
+          failure: '❌',
+          insight: '💡',
+          optimization: '⚡'
+        }[pattern.category];
+        console.log(`${icon} ${pattern.pattern}`);
+        console.log(`   Confidence: ${(pattern.confidence * 100).toFixed(0)}%`);
+        console.log(`   Recommendation: ${pattern.recommendation}\n`);
+      }
+    }
+
+    // Show insights
+    if (result.insights.length > 0) {
+      console.log('💭 Key Insights:\n');
+      for (const insight of result.insights) {
+        console.log(`• ${insight.insight}`);
+        if (insight.recommendation) {
+          console.log(`  → ${insight.recommendation}`);
+        }
+        console.log('');
+      }
+    }
+
+    // Show recommendations
+    if (result.recommendations.length > 0) {
+      console.log('🎯 Recommendations:\n');
+      for (const rec of result.recommendations) {
+        console.log(`  ${rec}\n`);
+      }
+    }
+  }
+
+  /**
+   * /insights - Show recent learning insights
+   */
+  async cmdInsights(): Promise<void> {
+    if (!this.masterAgent) {
+      console.log('❌ Multi-Agent system not available');
+      return;
+    }
+
+    const sessions = globalLearningCoordinator.getRecentSessions(3);
+
+    if (sessions.length === 0) {
+      console.log('\n💭 No reflection sessions yet');
+      console.log('   Use /reflect to conduct a reflection session\n');
+      return;
+    }
+
+    console.log('\n💭 Recent Learning Insights:\n');
+
+    for (const session of sessions) {
+      console.log(`📅 ${session.timestamp.toLocaleString()}`);
+      console.log(`   Agents: ${session.participatingAgents.length}`);
+      console.log(`   Experiences: ${session.experiencesAnalyzed}`);
+      console.log(`   Patterns: ${session.patternsIdentified}`);
+      console.log(`   Insights: ${session.insightsGenerated}`);
+      console.log('');
+    }
+  }
+
+  /**
+   * /knowledge <query> - Query collective knowledge
+   */
+  async cmdKnowledge(query?: string): Promise<void> {
+    if (!query) {
+      console.log('❌ Usage: /knowledge <query>');
+      console.log('   Example: /knowledge React hooks');
+      return;
+    }
+
+    if (!this.masterAgent) {
+      console.log('❌ Multi-Agent system not available');
+      return;
+    }
+
+    console.log(`\n🔍 Searching collective knowledge for: "${query}"\n`);
+
+    const results = await globalLearningCoordinator.queryCollectiveKnowledge(query, 5);
+
+    if (results.length === 0) {
+      console.log('❌ No relevant knowledge found\n');
+      return;
+    }
+
+    console.log(`✅ Found ${results.length} relevant experiences:\n`);
+
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      console.log(`${i + 1}. Similarity: ${(result.similarity * 100).toFixed(0)}% | Source: ${result.source}`);
+      console.log(`   ${result.experience.substring(0, 200)}...`);
+      console.log('');
+    }
+  }
+
+  /**
+   * /agent-stats [agentId] - Show agent learning statistics
+   */
+  async cmdAgentStats(agentId?: string): Promise<void> {
+    if (!this.masterAgent) {
+      console.log('❌ Multi-Agent system not available');
+      return;
+    }
+
+    const stats = globalLearningCoordinator.getCollectiveStats();
+
+    if (!agentId) {
+      // Show collective stats
+      console.log('\n📊 Collective Learning Statistics:\n');
+      console.log(`Total Agents: ${stats.totalAgents}`);
+      console.log(`Total Experiences: ${stats.totalExperiences}`);
+      console.log(`Overall Success Rate: ${(stats.overallSuccessRate * 100).toFixed(0)}%`);
+      console.log(`Reflection Sessions: ${stats.reflectionSessions}\n`);
+
+      if (stats.topTechnologies.length > 0) {
+        console.log('Top Technologies:');
+        for (const { tech, count } of stats.topTechnologies.slice(0, 5)) {
+          console.log(`  • ${tech}: ${count} uses`);
+        }
+        console.log('');
+      }
+
+      if (stats.topKeywords.length > 0) {
+        console.log('Top Action Keywords:');
+        for (const { keyword, count } of stats.topKeywords.slice(0, 5)) {
+          console.log(`  • ${keyword}: ${count} times`);
+        }
+        console.log('');
+      }
+
+      console.log('Agent Performance:');
+      for (const agent of stats.agentStats) {
+        console.log(`  • ${agent.agentId}: ${agent.experiences} exp, ${(agent.successRate * 100).toFixed(0)}% success`);
+      }
+      console.log('');
+    } else {
+      // Show specific agent stats
+      const learning = globalLearningCoordinator.getAgentLearning(agentId);
+      if (!learning) {
+        console.log(`❌ Agent ${agentId} not found`);
+        return;
+      }
+
+      const agentStats = learning.getStats();
+      console.log(`\n📊 Learning Statistics for ${agentId}:\n`);
+      console.log(`Total Experiences: ${agentStats.totalExperiences}`);
+      console.log(`Success Rate: ${(agentStats.successRate * 100).toFixed(0)}%`);
+      console.log(`Average Duration: ${agentStats.avgDuration.toFixed(0)}ms\n`);
+
+      if (agentStats.topTechnologies.length > 0) {
+        console.log('Top Technologies:');
+        for (const { tech, count } of agentStats.topTechnologies) {
+          console.log(`  • ${tech}: ${count} uses`);
+        }
+        console.log('');
+      }
+
+      console.log('Complexity Distribution:');
+      console.log(`  Simple: ${agentStats.complexityDistribution.simple}`);
+      console.log(`  Medium: ${agentStats.complexityDistribution.medium}`);
+      console.log(`  Complex: ${agentStats.complexityDistribution.complex}\n`);
+    }
+  }
+
+  /**
+   * /auto-reflect [on|off|<minutes>] - Enable/disable automatic reflection
+   */
+  async cmdAutoReflect(arg?: string): Promise<void> {
+    if (!this.masterAgent) {
+      console.log('❌ Multi-Agent system not available');
+      return;
+    }
+
+    if (!arg) {
+      console.log('Usage: /auto-reflect [on|off|<minutes>]');
+      console.log('   /auto-reflect on         - Enable with default interval (30 min)');
+      console.log('   /auto-reflect off        - Disable');
+      console.log('   /auto-reflect 60         - Enable with 60 minute interval');
+      return;
+    }
+
+    if (arg === 'off') {
+      globalLearningCoordinator.disableAutoReflection();
+    } else if (arg === 'on') {
+      globalLearningCoordinator.enableAutoReflection(30);
+    } else {
+      const minutes = parseInt(arg, 10);
+      if (isNaN(minutes) || minutes < 1) {
+        console.log('❌ Invalid interval. Provide a number of minutes >= 1');
+        return;
+      }
+      globalLearningCoordinator.enableAutoReflection(minutes);
     }
   }
 }

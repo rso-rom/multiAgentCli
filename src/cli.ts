@@ -15,8 +15,8 @@ const program = new Command();
 
 program
   .name('cacli')
-  .description('cacli (Coding Assistent CLI): Multi-Agent AI Orchestration with Intelligent Auto-Routing')
-  .version('4.2.0')
+  .description('cacli (Coding Assistent CLI): Multi-Agent AI Orchestration with Collaborative Learning & Reflection')
+  .version('4.3.0')
   .option('-b, --backend <name>', 'override backend (ollama|openwebui|openai|claude|anthropic|mock)')
   .option('--disable-tools', 'disable system tools (enabled by default)')
   .option('--enable-mcp', 'enable MCP server integration (VS Code, Obsidian, etc.)')

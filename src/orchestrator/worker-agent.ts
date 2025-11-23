@@ -1,4 +1,6 @@
 import { MessageBus, MessageType, AgentMessage, globalMessageBus } from './message-bus';
+import { AgentLearning } from './agent-learning';
+import { LearningCoordinator, globalLearningCoordinator } from './learning-coordinator';
 import crypto from 'crypto';
 
 /**
@@ -45,16 +47,24 @@ export abstract class WorkerAgent {
   protected messageBus: MessageBus;
   protected status: AgentStatus = AgentStatus.IDLE;
   protected currentTask: string | null = null;
+  protected learning: AgentLearning;
+  protected learningCoordinator: LearningCoordinator;
+  protected learningEnabled: boolean = true;
 
   constructor(
     name: string,
     capabilities: AgentCapability[],
-    messageBus: MessageBus = globalMessageBus
+    messageBus: MessageBus = globalMessageBus,
+    learningCoordinator: LearningCoordinator = globalLearningCoordinator
   ) {
     this.id = `agent-${crypto.randomUUID().substring(0, 8)}`;
     this.name = name;
     this.capabilities = capabilities;
     this.messageBus = messageBus;
+    this.learningCoordinator = learningCoordinator;
+
+    // Initialize learning component
+    this.learning = this.learningCoordinator.registerAgent(this.id, this.name, this.capabilities);
 
     this.setupMessageHandlers();
   }
@@ -116,10 +126,31 @@ export abstract class WorkerAgent {
     this.currentTask = message.payload.task;
 
     try {
+      // Before executing: Check if we have similar past experiences
+      if (this.learningEnabled) {
+        const similarExperiences = await this.learning.searchSimilarExperiences(message.payload.task, 3);
+        if (similarExperiences.length > 0) {
+          // Agent has learned from similar tasks!
+          await this.onSimilarExperienceFound(similarExperiences);
+        }
+      }
+
       // Execute the task
       const startTime = Date.now();
       const result = await this.executeTask(message.payload.task, message.payload.context);
       const duration = Date.now() - startTime;
+
+      // Record successful experience
+      if (this.learningEnabled) {
+        await this.learning.recordExperience(
+          message.payload.task,
+          true, // success
+          result,
+          undefined, // no error
+          duration,
+          message.payload.context
+        );
+      }
 
       // Send response
       this.messageBus.respond(message, this.id, {
@@ -131,6 +162,18 @@ export abstract class WorkerAgent {
       this.status = AgentStatus.IDLE;
       this.currentTask = null;
     } catch (error: any) {
+      // Record failed experience
+      if (this.learningEnabled) {
+        await this.learning.recordExperience(
+          message.payload.task,
+          false, // failed
+          undefined,
+          error.message,
+          undefined,
+          message.payload.context
+        );
+      }
+
       this.status = AgentStatus.ERROR;
       this.messageBus.respond(message, this.id, {
         success: false,
@@ -173,7 +216,42 @@ export abstract class WorkerAgent {
    * Handle broadcast messages (can be overridden)
    */
   protected async onBroadcast(message: AgentMessage): Promise<void> {
-    // Override in subclass if needed
+    // React to knowledge sharing events
+    if (message.payload.event === 'knowledge_shared') {
+      await this.onKnowledgeShared(message.payload.patterns, message.payload.insights);
+    }
+  }
+
+  /**
+   * Called when similar experiences are found (can be overridden)
+   */
+  protected async onSimilarExperienceFound(
+    experiences: Array<{ experience: string; similarity: number; metadata: any }>
+  ): Promise<void> {
+    // Agents can use this to learn from past experiences
+    // Override in subclass to implement custom learning behavior
+  }
+
+  /**
+   * Called when knowledge is shared (can be overridden)
+   */
+  protected async onKnowledgeShared(patterns: any[], insights: any[]): Promise<void> {
+    // Agents can use this to learn from collective insights
+    // Override in subclass to implement custom learning behavior
+  }
+
+  /**
+   * Query knowledge from this agent's learning
+   */
+  protected async queryKnowledge(query: string, limit = 5): Promise<any[]> {
+    return await this.learning.searchSimilarExperiences(query, limit);
+  }
+
+  /**
+   * Query collective knowledge from all agents
+   */
+  protected async queryCollectiveKnowledge(query: string, limit = 5): Promise<any[]> {
+    return await this.learningCoordinator.queryCollectiveKnowledge(query, limit);
   }
 
   /**
