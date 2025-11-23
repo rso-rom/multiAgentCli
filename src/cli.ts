@@ -3,6 +3,7 @@ import { ReplSession } from './repl';
 import { getBackendName } from './config';
 import { AnthropicBackend } from './backends/anthropic';
 import { globalTokenStore } from './auth/token-store';
+import { SetupWizard } from './setup/setup-wizard';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -33,6 +34,21 @@ program
     const session = new ReplSession(opts.backend);
     await session.ask(prompt);
     process.exit(0);
+  });
+
+// Setup wizard
+program
+  .command('setup')
+  .description('Interactive setup wizard for first-time configuration')
+  .action(async () => {
+    try {
+      const wizard = new SetupWizard();
+      await wizard.run();
+      process.exit(0);
+    } catch (err: any) {
+      console.error('❌ Setup failed:', err.message);
+      process.exit(1);
+    }
   });
 
 // Login command for OAuth authentication
