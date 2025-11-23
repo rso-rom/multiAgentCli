@@ -273,62 +273,108 @@ Findet automatisch die richtige URL!
 
 ## 🛠️ Verfügbare Tools
 
-### 1. curl
+### Web Tools
 
+**1. curl** - HTTP Requests
 ```bash
 [TOOL:curl:https://api.example.com/docs]
 ```
-
-**Verwendet für:**
 - API-Dokumentation abrufen
 - Endpoints testen
 - HTML/JSON-Responses
 
-**Optionen:**
+**2. wget** - File Download
 ```bash
-[TOOL:curl:https://api.example.com/v1/models -H "Accept: application/json"]
+[TOOL:wget:https://example.com/docs.html]
 ```
-
-### 2. wget
-
-```bash
-[TOOL:wget:https://example.com/documentation.html]
-```
-
-**Verwendet für:**
 - Dokumentations-Downloads
 - Static Files
 - Große Responses
 
-### 3. http_get
-
+**3. http_get** - Simple GET
 ```bash
 [TOOL:http_get:https://api.example.com/v1/info]
 ```
-
-**Verwendet für:**
 - Einfache GET-Requests
 - API-Tests
-- Quick Checks
+
+### Git Tools
+
+**4. git_clone** - Clone Repository
+```bash
+[TOOL:git_clone:https://github.com/user/repo.git]
+```
+- SDK Repositories klonen
+- Code-Beispiele abrufen
+- Nur HTTPS URLs (Sicherheit)
+
+### Package Tools
+
+**5. npm_info** - Package Info
+```bash
+[TOOL:npm_info:@google/generative-sdk]
+```
+- NPM Package-Informationen
+- Version & Dependencies
+- Repository-Links
+
+### File Tools
+
+**6. cat** - Read Files
+```bash
+[TOOL:cat:package.json]
+[TOOL:cat:src/index.ts]
+```
+- Dateien lesen
+- Code analysieren
+- Config-Files prüfen
+
+**7. grep** - Search in Files
+```bash
+[TOOL:grep:API_KEY .env]
+[TOOL:grep:export src/index.ts]
+```
+- In Dateien suchen
+- Patterns finden
+
+### Code Execution
+
+**8. node** - Run JavaScript
+```bash
+[TOOL:node:-e "console.log(JSON.parse('{}'))"]
+```
+- JavaScript ausführen
+- JSON parsen
+- Quick Tests
+
+### JSON Tools
+
+**9. jq** - Parse JSON
+```bash
+[TOOL:jq:. package.json]
+```
+- JSON formatieren
+- Felder extrahieren
+
+### Shell Tools
+
+**10. shell** - Safe Commands
+```bash
+[TOOL:shell:ls -la]
+[TOOL:shell:pwd]
+[TOOL:shell:which node]
+```
+- Whitelist: ls, pwd, date, uname, which, etc.
+- Sichere System-Befehle
 
 ---
 
 ## 📝 Beispiel-Ablauf
 
-### Full Agentic Workflow
+### Basic Workflow (Web Tools Only)
 
 ```bash
 $ cacli configure backend mistral --api-key YOUR_KEY
-
-🎯 Configuration mode:
-   🤖 Agentic Tool Use: Enabled (LLM can use curl/wget)
-
-🤖 Auto-configuring backend: mistral
-📡 Using OllamaBackend to research and generate code...
-
-🔍 Researching mistral API...
-🤖 Using agentic tool-based research...
-🤖 Starting agentic research for mistral...
 
 🔄 Agentic iteration 1/3...
 🔧 Executing 2 tool call(s)...
@@ -337,34 +383,93 @@ $ cacli configure backend mistral --api-key YOUR_KEY
   🔧 Executing tool: http_get https://api.mistral.ai/v1/models
   ✅ Tool executed successfully (1842 bytes)
 
+✅ Research complete!
+```
+
+### Advanced Workflow (All Tools)
+
+```bash
+$ cacli configure backend gemini --api-key YOUR_KEY
+
+🔄 Agentic iteration 1/3...
+LLM: "I'll research the Gemini API comprehensively:"
+
+🔧 Executing 5 tool call(s)...
+
+  # Web Research
+  🔧 curl https://docs.gemini.ai/api-reference
+  ✅ Tool executed successfully (12453 bytes)
+
+  # Check for SDK
+  🔧 npm_info @google-ai/generativelanguage
+  ✅ Tool executed successfully (3421 bytes)
+  → Found SDK! Repository: https://github.com/google/generative-ai-js
+
+  # Clone SDK for examples
+  🔧 git_clone https://github.com/google/generative-ai-js.git
+  ✅ Tool executed successfully
+  → Cloned to: generative-ai-js/
+
+  # Read package structure
+  🔧 cat generative-ai-js/package.json
+  ✅ Tool executed successfully
+  → Found entry point: dist/index.js
+
+  # Search for API endpoint in code
+  🔧 grep "https://generativelanguage" generative-ai-js/src/*.ts
+  ✅ Tool executed successfully
+  → Found: API_URL = https://generativelanguage.googleapis.com/v1beta
+
 🔄 Agentic iteration 2/3...
+LLM: "Based on the SDK code, I'll extract more details:"
+
+🔧 Executing 2 tool call(s)...
+
+  # Parse package.json to get version
+  🔧 node -e "const pkg = require('./generative-ai-js/package.json'); console.log(pkg.version)"
+  ✅ Tool executed successfully
+  → Version: 0.1.3
+
+  # Check what models are available
+  🔧 http_get https://generativelanguage.googleapis.com/v1beta/models
+  ✅ Tool executed successfully (2891 bytes)
+  → Models: gemini-pro, gemini-pro-vision
 
 ✅ Research complete!
-   API URL: https://api.mistral.ai/v1
+   API URL: https://generativelanguage.googleapis.com/v1beta
    Auth: api-key
-   Default Model: mistral-medium
+   Default Model: gemini-pro
    Streaming: Yes
-   Vision: No
-
-? Generate backend implementation? Yes
+   Vision: Yes (gemini-pro-vision)
 
 🔨 Generating backend code...
-🌐 Searching for mistral code examples...
-✅ Found official SDK: mistral-sdk
+   [Using SDK structure as template]
 
-✅ Saved: src/backends/mistral.ts
-
-🔧 Updating configuration files...
-✅ Configuration files updated
-
-⚙️  Configuring environment...
-✅ Updated .env.example
-✅ Updated .env with API key
-
-🧪 Testing connection...
-✅ Connection successful!
+✅ Saved: src/backends/gemini.ts
 
 🎉 Auto-configuration complete!
+```
+
+### LLM Tool Chain Example
+
+**Was das LLM macht:**
+
+```
+Iteration 1: Broad Research
+├─ [TOOL:curl:https://docs.gemini.ai/api-reference]
+├─ [TOOL:npm_info:@google-ai/generativelanguage]
+└─ Decision: "SDK exists! Let me clone it for better understanding"
+
+Iteration 2: Deep Dive
+├─ [TOOL:git_clone:https://github.com/google/generative-ai-js.git]
+├─ [TOOL:cat:generative-ai-js/package.json]
+├─ [TOOL:grep:API_URL generative-ai-js/src/*.ts]
+└─ Decision: "Found all info! Let me verify endpoints"
+
+Iteration 3: Verification
+├─ [TOOL:http_get:https://api.../models]
+├─ [TOOL:node:-e "console.log(JSON.parse(response))"]
+└─ Decision: "Complete! I have all necessary information"
 ```
 
 ---
