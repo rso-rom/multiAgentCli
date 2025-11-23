@@ -264,6 +264,8 @@ export class ReplSession {
       await this.cmdAgentTools();
     } else if (verb === 'history' || verb === 'hist') {
       await this.cmdHistory(arg);
+    } else if (verb === 'learned') {
+      await this.cmdLearned(arg);
     } else if (verb === 'token') {
       await this.cmdToken(arg);
     } else if (verb === 'screenshot' || verb === 'ss' || verb === 'image' || verb === 'img') {
@@ -534,6 +536,7 @@ ${this.toolExecutor ? `     🔧 System Tools: ${toolStatus}
 🔧 UTILITIES
   /tools            Show available CLI tools (alias: /t)
   /history [query]  Search prompt history (alias: /hist)
+  /learned [query]  Show learned knowledge from self-learning
   /token <cmd>      Manage OAuth tokens
   /clear            Clear screen (alias: /c)
   /help             Show this help (alias: /h)
@@ -736,6 +739,7 @@ Provide your answer based on tool results when available.`;
     let usedCurlWget = false;
     let tutorialUrl = '';
     let executedSteps: string[] = [];
+    let allExecutionsSuccessful = true;
 
     while (iteration < maxIterations) {
       iteration++;
@@ -816,17 +820,20 @@ Provide your answer based on tool results when available.`;
             const result = await this.executeGUITool(call.action, call.parameters);
             feedback += `✅ [GUI] ${call.action}: ${result}\n\n`;
 
-            // Track GUI steps for self-learning
+            // Track GUI steps for self-learning (only successful ones)
             executedSteps.push(`${call.action}: ${JSON.stringify(call.parameters)}`);
           } catch (error: any) {
             feedback += `❌ [GUI] ${call.action} failed: ${error.message}\n\n`;
+            allExecutionsSuccessful = false; // Mark as failed
           }
         }
 
-        // Save learned knowledge if agent used both curl/wget and GUI
-        if (usedCurlWget && executedSteps.length > 0) {
+        // Save learned knowledge only if ALL executions were successful
+        if (usedCurlWget && executedSteps.length > 0 && allExecutionsSuccessful) {
           const stepsText = executedSteps.map((s, i) => `${i + 1}. ${s}`).join('\n');
           await this.saveLearnedKnowledge(prompt, tutorialUrl || 'unknown', stepsText);
+        } else if (usedCurlWget && executedSteps.length > 0 && !allExecutionsSuccessful) {
+          console.log(`⚠️  Learning not saved: Some GUI operations failed\n`);
         }
       }
 
@@ -1244,6 +1251,71 @@ ${steps}`;
       console.log('');
     } catch (error: any) {
       console.error(`❌ Error retrieving history: ${error.message}`);
+    }
+  }
+
+  /**
+   * Show learned knowledge from self-learning
+   */
+  async cmdLearned(query?: string): Promise<void> {
+    if (!this.askStoreHandler || !this.askStoreHandler.isEnabled()) {
+      console.log('❌ Self-learning not available (requires Qdrant and --enable-tools --enable-gui)');
+      console.log('\n💡 To enable self-learning:');
+      console.log('   1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant');
+      console.log('   2. Run: cacli --enable-tools --enable-gui\n');
+      return;
+    }
+
+    console.log('\n📚 Learned Knowledge\n');
+
+    try {
+      // Search all prompts, then filter for learned tasks
+      const allResults = query
+        ? await this.askStoreHandler.searchPrompts(query, 50)
+        : await this.askStoreHandler.searchPrompts('', 50);
+
+      // Filter only learned tasks
+      const learnedTasks = allResults.filter(r => r.metadata?.type === 'learned_task');
+
+      if (learnedTasks.length === 0) {
+        console.log('No learned tasks yet.');
+        console.log('\n💡 Tasks are learned automatically when you:');
+        console.log('   1. Use curl/wget to fetch tutorials');
+        console.log('   2. Use GUI tools to execute steps');
+        console.log('\nExample: "Create a watermark in GIMP"\n');
+        return;
+      }
+
+      learnedTasks.forEach((task, index) => {
+        const learnedAt = task.metadata?.learned_at
+          ? new Date(task.metadata.learned_at).toLocaleString()
+          : 'Unknown';
+        const tutorialUrl = task.metadata?.tutorialUrl || 'unknown';
+        const taskName = task.metadata?.task || 'Unnamed task';
+        const similarity = (task as any).similarity
+          ? ` (${((task as any).similarity * 100).toFixed(1)}% match)`
+          : '';
+
+        console.log(`${index + 1}. ${taskName}${similarity}`);
+        console.log(`   📅 Learned: ${learnedAt}`);
+        console.log(`   🔗 Tutorial: ${tutorialUrl}`);
+
+        // Show preview of steps
+        const steps = task.text.split('Steps learned:')[1];
+        if (steps) {
+          const firstSteps = steps.split('\n').slice(0, 3).join('\n');
+          console.log(`   📝 Steps:${firstSteps}${steps.split('\n').length > 3 ? '\n      ...' : ''}`);
+        }
+        console.log('');
+      });
+
+      console.log(`Showing ${learnedTasks.length} learned task(s)`);
+      if (query) {
+        console.log(`Search query: "${query}"`);
+      }
+      console.log('\n💡 Tip: Use similar queries to reuse this knowledge automatically!\n');
+    } catch (error: any) {
+      console.error(`❌ Error retrieving learned knowledge: ${error.message}`);
     }
   }
 
