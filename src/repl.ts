@@ -10,6 +10,10 @@ import { AskStoreHandler } from './orchestrator/ask-store-handler';
 import { MemoryManager } from './memory/memory-manager';
 import { ToolExecutor } from './utils/tool-executor';
 import { CapabilityDetector } from './utils/capability-detector';
+import { MCPDetector } from './mcp/mcp-detector';
+import { MCPToolExecutor } from './mcp/mcp-client';
+import { GUIController } from './gui/gui-controller';
+import { ImageEditorAutomator } from './gui/app-automators/image-editor-automator';
 
 function readFileSafe(p: string): string | null {
   try {
@@ -29,11 +33,18 @@ export class ReplSession {
   askStoreHandler?: AskStoreHandler;
   toolExecutor?: ToolExecutor;
   enableTools: boolean = false;
+  mcpExecutor?: MCPToolExecutor;
+  enableMcp: boolean = false;
+  guiController?: GUIController;
+  imageAutomator?: ImageEditorAutomator;
+  enableGui: boolean = false;
 
-  constructor(backendName?: string, enableTools?: boolean) {
+  constructor(backendName?: string, enableTools?: boolean, enableMcp?: boolean, enableGui?: boolean) {
     this.backendName = backendName;
     this.backend = getBackend(backendName);
     this.enableTools = enableTools || process.env.ENABLE_AGENT_TOOLS === 'true';
+    this.enableMcp = enableMcp || process.env.ENABLE_MCP === 'true';
+    this.enableGui = enableGui || process.env.ENABLE_GUI_CONTROL === 'true';
   }
 
   /**
@@ -98,6 +109,79 @@ export class ReplSession {
     console.log(`✅ Agents can now use ${permissions.size} system tools\n`);
   }
 
+  /**
+   * Setup MCP capabilities for agents
+   */
+  async setupMCPCapabilities(): Promise<void> {
+    if (!this.enableMcp) {
+      return;
+    }
+
+    console.log('\n🔍 Scanning for MCP servers...\n');
+
+    const detector = new MCPDetector();
+    const servers = await detector.detectAll();
+
+    if (servers.filter(s => s.available).length === 0) {
+      console.log('⚠️  No MCP servers detected\n');
+      console.log('💡 To use MCP:');
+      console.log('   - Install VS Code MCP extension');
+      console.log('   - Setup Obsidian MCP plugin');
+      console.log('   - Configure custom servers in ~/.config/mcp/servers.json\n');
+      return;
+    }
+
+    // Request user permissions
+    const permissions = await detector.requestPermissions(servers);
+
+    if (permissions.size === 0) {
+      console.log('⚠️  No MCP servers permitted\n');
+      return;
+    }
+
+    // Create MCP executor
+    this.mcpExecutor = new MCPToolExecutor(servers, permissions);
+    console.log(`✅ Connected to ${permissions.size} MCP server(s)\n`);
+  }
+
+  /**
+   * Setup GUI control capabilities for agents
+   */
+  async setupGUICapabilities(): Promise<void> {
+    if (!this.enableGui) {
+      return;
+    }
+
+    console.log('\n⚠️  GUI CONTROL ENABLED\n');
+    console.log('   This allows agents to control your mouse and keyboard!\n');
+    console.log('   Agents can:');
+    console.log('   - Move your mouse');
+    console.log('   - Click buttons');
+    console.log('   - Type text');
+    console.log('   - Control applications (Photoshop, GIMP, etc.)\n');
+    console.log('   ⚠️  Make sure you supervise the agent!');
+    console.log('   ⚠️  Press Ctrl+C anytime to stop.\n');
+
+    const { confirm } = await inquirer.prompt([{
+      type: 'confirm',
+      name: 'confirm',
+      message: 'Continue with GUI control enabled?',
+      default: false
+    }]);
+
+    if (!confirm) {
+      console.log('❌ GUI control cancelled\n');
+      this.enableGui = false;
+      return;
+    }
+
+    this.guiController = new GUIController();
+    this.imageAutomator = new ImageEditorAutomator('gimp'); // Default to GIMP
+
+    console.log('✅ GUI control enabled\n');
+    console.log('💡 Agents can now automate Photoshop, GIMP, Paint, Krita, etc.\n');
+  }
+
   async run(): Promise<void> {
     console.log(`🧠 cacli REPL (backend=${this.backendName || process.env.MODEL_BACKEND || 'mock'})`);
     console.log('Type "/help" for commands, or just start typing to ask questions');
@@ -107,6 +191,12 @@ export class ReplSession {
 
     // Setup tool capabilities if enabled
     await this.setupToolCapabilities();
+
+    // Setup MCP capabilities if enabled
+    await this.setupMCPCapabilities();
+
+    // Setup GUI control if enabled
+    await this.setupGUICapabilities();
 
     while (true) {
       const { cmd } = await inquirer.prompt([
@@ -376,6 +466,11 @@ export class ReplSession {
 
   printHelp(): void {
     const toolStatus = this.toolExecutor ? '✅ ENABLED' : '❌ disabled';
+    const mcpStatus = this.mcpExecutor ? '✅ ENABLED' : '❌ disabled';
+    const guiStatus = this.guiController ? '✅ ENABLED' : '❌ disabled';
+
+    const hasAdvancedFeatures = this.toolExecutor || this.mcpExecutor || this.guiController;
+
     console.log(`
 ╭─────────────────────────────────────────────────────────────╮
 │  🧠 CAILI - Natural Language + Slash Commands              │
@@ -388,10 +483,16 @@ export class ReplSession {
     > Was ist TypeScript?
     > Erkläre mir async/await
     > Wie erstelle ich eine REST API?
-${this.toolExecutor ? `
-  🔧 Agent Tools: ${toolStatus}
-     Agents can use system tools (curl, git, npm, etc.)
-     to gather real-time information and execute tasks.
+${hasAdvancedFeatures ? `
+  🚀 ADVANCED AGENT CAPABILITIES:
+${this.toolExecutor ? `     🔧 System Tools: ${toolStatus}
+        Agents can use curl, git, npm, etc. for real-time data
+` : ''}${this.mcpExecutor ? `     🔌 MCP Integration: ${mcpStatus}
+        Agents can use VS Code, Obsidian, and other MCP servers
+` : ''}${this.guiController ? `     🖱️ GUI Control: ${guiStatus}
+        Agents can control Photoshop, GIMP, and other applications
+` : ''}
+     Enable with: cacli --enable-tools --enable-mcp --enable-gui
 ` : ''}
 📂 FILE OPERATIONS
   /load <file>      Load file into session (alias: /l)
@@ -577,7 +678,36 @@ Return the full file in a code block.`;
     console.log('⤴️ Asking model with tool access...\n');
 
     // Build enhanced prompt with tool instructions
-    const enhancedPrompt = `${ToolExecutor.buildToolUsePrompt()}
+    let toolPrompt = ToolExecutor.buildToolUsePrompt();
+
+    // Add MCP tools if available
+    if (this.mcpExecutor) {
+      const mcpTools = await this.mcpExecutor.getAllTools();
+      if (mcpTools.length > 0) {
+        toolPrompt += '\n' + MCPToolExecutor.buildMCPToolUsePrompt(mcpTools);
+      }
+    }
+
+    // Add GUI tools if available
+    if (this.guiController) {
+      toolPrompt += '\n**GUI Control Tools:**\n\n';
+      toolPrompt += 'You can control the GUI to automate applications:\n\n';
+      toolPrompt += '- **launch_app**: Launch application\n';
+      toolPrompt += '  Usage: [TOOL:gui:launch_app:{\"app\":\"gimp\"}]\n';
+      toolPrompt += '- **create_image**: Create new image in image editor\n';
+      toolPrompt += '  Usage: [TOOL:gui:create_image:{\"width\":800,\"height\":600}]\n';
+      toolPrompt += '- **draw_rectangle**: Draw rectangle\n';
+      toolPrompt += '  Usage: [TOOL:gui:draw_rectangle:{\"x\":100,\"y\":100,\"width\":200,\"height\":150,\"color\":\"#FF0000\"}]\n';
+      toolPrompt += '- **draw_ellipse**: Draw ellipse\n';
+      toolPrompt += '  Usage: [TOOL:gui:draw_ellipse:{\"x\":100,\"y\":100,\"width\":200,\"height\":150,\"color\":\"#00FF00\"}]\n';
+      toolPrompt += '- **add_text**: Add text to image\n';
+      toolPrompt += '  Usage: [TOOL:gui:add_text:{\"x\":100,\"y\":100,\"text\":\"Hello\",\"size\":48,\"color\":\"#000000\"}]\n';
+      toolPrompt += '- **save_image**: Save image\n';
+      toolPrompt += '  Usage: [TOOL:gui:save_image:{\"path\":\"/tmp/output.png\"}]\n';
+      toolPrompt += '\nNote: GUI tools control your mouse and keyboard. Use responsibly!\n';
+    }
+
+    const enhancedPrompt = `${toolPrompt}
 
 User question: ${prompt}
 
@@ -603,26 +733,64 @@ Provide your answer based on tool results when available.`;
       const maybe = await this.backend.chat(currentPrompt, onStream);
       if (maybe && typeof maybe === 'string') response = maybe;
 
-      // Check for tool calls
+      // Check for all types of tool calls
       const toolCalls = this.toolExecutor!.parseToolCalls(response);
+      const mcpCalls = this.mcpExecutor?.parseMCPToolCall(response) || [];
+      const guiCalls = this.parseGUIToolCalls(response);
 
-      if (toolCalls.length === 0) {
+      const totalCalls = toolCalls.length + mcpCalls.length + guiCalls.length;
+
+      if (totalCalls === 0) {
         // No more tool calls - agent is done
         console.log('\n');
         break;
       }
 
-      // Execute tools
-      console.log(`\n\n🔧 Executing ${toolCalls.length} tool(s)...\n`);
-      const toolResults = await this.toolExecutor!.executeToolCalls(response);
-
       // Build feedback for next iteration
       let feedback = '\nTool execution results:\n\n';
-      for (const [key, result] of toolResults.entries()) {
-        if (result.success) {
-          feedback += `✅ ${key}:\n${result.output.substring(0, 1000)}\n\n`;
-        } else {
-          feedback += `❌ ${key} failed: ${result.error}\n\n`;
+
+      // Execute system tools
+      if (toolCalls.length > 0) {
+        console.log(`\n\n🔧 Executing ${toolCalls.length} system tool(s)...\n`);
+        const toolResults = await this.toolExecutor!.executeToolCalls(response);
+
+        for (const [key, result] of toolResults.entries()) {
+          if (result.success) {
+            feedback += `✅ ${key}:\n${result.output.substring(0, 1000)}\n\n`;
+          } else {
+            feedback += `❌ ${key} failed: ${result.error}\n\n`;
+          }
+        }
+      }
+
+      // Execute MCP tools
+      if (mcpCalls.length > 0) {
+        console.log(`\n\n🔌 Executing ${mcpCalls.length} MCP tool(s)...\n`);
+        for (const call of mcpCalls) {
+          const result = await this.mcpExecutor!.executeMCPTool(
+            call.server,
+            call.tool,
+            call.parameters
+          );
+
+          if (result.success) {
+            feedback += `✅ [MCP] ${call.server}:${call.tool}:\n${JSON.stringify(result.output, null, 2).substring(0, 1000)}\n\n`;
+          } else {
+            feedback += `❌ [MCP] ${call.server}:${call.tool} failed: ${result.error}\n\n`;
+          }
+        }
+      }
+
+      // Execute GUI tools
+      if (guiCalls.length > 0) {
+        console.log(`\n\n🖱️ Executing ${guiCalls.length} GUI tool(s)...\n`);
+        for (const call of guiCalls) {
+          try {
+            const result = await this.executeGUITool(call.action, call.parameters);
+            feedback += `✅ [GUI] ${call.action}: ${result}\n\n`;
+          } catch (error: any) {
+            feedback += `❌ [GUI] ${call.action} failed: ${error.message}\n\n`;
+          }
         }
       }
 
@@ -635,6 +803,85 @@ Provide your answer based on tool results when available.`;
 
     if (iteration >= maxIterations) {
       console.log('\n⚠️  Maximum iterations reached\n');
+    }
+  }
+
+  /**
+   * Parse GUI tool calls from response
+   */
+  private parseGUIToolCalls(response: string): Array<{action: string; parameters: any}> {
+    const guiCallRegex = /\[TOOL:gui:(\w+):({[^}]+})\]/g;
+    const calls: Array<{action: string; parameters: any}> = [];
+
+    let match;
+    while ((match = guiCallRegex.exec(response)) !== null) {
+      try {
+        const parameters = JSON.parse(match[2]);
+        calls.push({
+          action: match[1],
+          parameters
+        });
+      } catch (error) {
+        console.error(`Failed to parse GUI tool call parameters: ${match[2]}`);
+      }
+    }
+
+    return calls;
+  }
+
+  /**
+   * Execute GUI tool
+   */
+  private async executeGUITool(action: string, params: any): Promise<string> {
+    if (!this.guiController || !this.imageAutomator) {
+      throw new Error('GUI control not enabled');
+    }
+
+    switch (action) {
+      case 'launch_app':
+        await this.guiController.launchApp(params.app);
+        return `Launched ${params.app}`;
+
+      case 'create_image':
+        await this.imageAutomator.createNewImage(params.width, params.height);
+        return `Created ${params.width}x${params.height} image`;
+
+      case 'draw_rectangle':
+        await this.imageAutomator.drawRectangle(
+          params.x, params.y, params.width, params.height, params.color
+        );
+        return `Drew rectangle at (${params.x},${params.y})`;
+
+      case 'draw_ellipse':
+        await this.imageAutomator.drawEllipse(
+          params.x, params.y, params.width, params.height, params.color
+        );
+        return `Drew ellipse at (${params.x},${params.y})`;
+
+      case 'add_text':
+        await this.imageAutomator.addText(
+          params.x, params.y, params.text, params.size, params.color
+        );
+        return `Added text "${params.text}" at (${params.x},${params.y})`;
+
+      case 'save_image':
+        await this.imageAutomator.saveImage(params.path);
+        return `Saved image to ${params.path}`;
+
+      case 'move_mouse':
+        await this.guiController.moveMouse(params.x, params.y);
+        return `Moved mouse to (${params.x},${params.y})`;
+
+      case 'click':
+        await this.guiController.click(params.button || 'left');
+        return `Clicked ${params.button || 'left'} button`;
+
+      case 'type':
+        await this.guiController.type(params.text);
+        return `Typed: ${params.text}`;
+
+      default:
+        throw new Error(`Unknown GUI action: ${action}`);
     }
   }
 

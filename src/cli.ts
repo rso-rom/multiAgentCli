@@ -19,9 +19,11 @@ program
   .version('3.0.0')
   .option('-b, --backend <name>', 'override backend (ollama|openwebui|openai|claude|anthropic|mock)')
   .option('--enable-tools', 'enable agents to use system tools (curl, git, npm, etc.)')
+  .option('--enable-mcp', 'enable MCP server integration (VS Code, Obsidian, etc.)')
+  .option('--enable-gui', 'enable GUI control (Photoshop, GIMP, etc.) - POWERFUL!')
   .action((opts) => {
     // Default action: start REPL
-    const session = new ReplSession(opts.backend, opts.enableTools);
+    const session = new ReplSession(opts.backend, opts.enableTools, opts.enableMcp, opts.enableGui);
     session.run().catch(err => {
       console.error('Error:', err);
       process.exit(1);
@@ -34,11 +36,19 @@ program
   .argument('<prompt...>', 'prompt to send to model')
   .option('-b, --backend <name>')
   .option('--enable-tools', 'enable agents to use system tools')
+  .option('--enable-mcp', 'enable MCP server integration')
+  .option('--enable-gui', 'enable GUI control')
   .action(async (promptParts: string[], opts) => {
     const prompt = promptParts.join(' ');
-    const session = new ReplSession(opts.backend, opts.enableTools);
+    const session = new ReplSession(opts.backend, opts.enableTools, opts.enableMcp, opts.enableGui);
     if (opts.enableTools) {
       await session.setupToolCapabilities();
+    }
+    if (opts.enableMcp) {
+      await session.setupMCPCapabilities();
+    }
+    if (opts.enableGui) {
+      await session.setupGUICapabilities();
     }
     await session.ask(prompt);
     process.exit(0);
