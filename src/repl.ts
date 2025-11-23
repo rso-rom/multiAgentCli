@@ -196,8 +196,19 @@ export class ReplSession {
       return;
     }
 
+    // Prevent double initialization
+    if (this.enableMultiAgent && this.masterAgent) {
+      return;
+    }
+
     this.enableMultiAgent = true;
     this.masterAgent = globalMasterAgent;
+
+    // Check if agents already spawned (in global registry)
+    if (this.masterAgent.listAgents().length > 0) {
+      console.log('\n🤖 Multi-Agent System already initialized\n');
+      return;
+    }
 
     console.log('\n🤖 Multi-Agent System enabled\n');
     console.log('   Starting default worker agents...\n');

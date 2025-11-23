@@ -16,7 +16,7 @@ const program = new Command();
 program
   .name('cacli')
   .description('cacli (Coding Assistent CLI): Multi-Agent AI Orchestration with Dynamic Workflow Generation')
-  .version('3.0.0')
+  .version('4.0.0')
   .option('-b, --backend <name>', 'override backend (ollama|openwebui|openai|claude|anthropic|mock)')
   .option('--enable-tools', 'enable agents to use system tools (curl, git, npm, etc.)')
   .option('--enable-mcp', 'enable MCP server integration (VS Code, Obsidian, etc.)')
@@ -49,6 +49,10 @@ program
     }
     if (opts.enableGui) {
       await session.setupGUICapabilities();
+    }
+    // Setup Multi-Agent system if tools or GUI enabled
+    if (opts.enableTools || opts.enableGui) {
+      await session.setupMultiAgent();
     }
     await session.ask(prompt);
     process.exit(0);
