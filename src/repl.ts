@@ -48,9 +48,10 @@ export class ReplSession {
   constructor(backendName?: string, enableTools?: boolean, enableMcp?: boolean, enableGui?: boolean) {
     this.backendName = backendName;
     this.backend = getBackend(backendName);
-    this.enableTools = enableTools || process.env.ENABLE_AGENT_TOOLS === 'true';
-    this.enableMcp = enableMcp || process.env.ENABLE_MCP === 'true';
-    this.enableGui = enableGui || process.env.ENABLE_GUI_CONTROL === 'true';
+    // Enable tools and GUI by default (can be disabled via flags or env vars)
+    this.enableTools = enableTools ?? (process.env.ENABLE_AGENT_TOOLS !== 'false');
+    this.enableMcp = enableMcp ?? (process.env.ENABLE_MCP === 'true'); // MCP remains optional (requires external servers)
+    this.enableGui = enableGui ?? (process.env.ENABLE_GUI_CONTROL !== 'false');
   }
 
   /**

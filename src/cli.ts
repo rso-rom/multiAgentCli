@@ -16,14 +16,17 @@ const program = new Command();
 program
   .name('cacli')
   .description('cacli (Coding Assistent CLI): Multi-Agent AI Orchestration with Intelligent Auto-Routing')
-  .version('4.1.1')
+  .version('4.2.0')
   .option('-b, --backend <name>', 'override backend (ollama|openwebui|openai|claude|anthropic|mock)')
-  .option('--enable-tools', 'enable agents to use system tools (curl, git, npm, etc.)')
+  .option('--disable-tools', 'disable system tools (enabled by default)')
   .option('--enable-mcp', 'enable MCP server integration (VS Code, Obsidian, etc.)')
-  .option('--enable-gui', 'enable GUI control (Photoshop, GIMP, etc.) - POWERFUL!')
+  .option('--disable-gui', 'disable GUI control (enabled by default)')
   .action((opts) => {
     // Default action: start REPL
-    const session = new ReplSession(opts.backend, opts.enableTools, opts.enableMcp, opts.enableGui);
+    // Tools and GUI are enabled by default, unless explicitly disabled
+    const enableTools = !opts.disableTools;
+    const enableGui = !opts.disableGui;
+    const session = new ReplSession(opts.backend, enableTools, opts.enableMcp, enableGui);
     session.run().catch(err => {
       console.error('Error:', err);
       process.exit(1);
@@ -35,19 +38,22 @@ program
   .description('One-off question without starting REPL')
   .argument('<prompt...>', 'prompt to send to model')
   .option('-b, --backend <name>')
-  .option('--enable-tools', 'enable agents to use system tools')
+  .option('--disable-tools', 'disable system tools (enabled by default)')
   .option('--enable-mcp', 'enable MCP server integration')
-  .option('--enable-gui', 'enable GUI control')
+  .option('--disable-gui', 'disable GUI control (enabled by default)')
   .action(async (promptParts: string[], opts) => {
     const prompt = promptParts.join(' ');
-    const session = new ReplSession(opts.backend, opts.enableTools, opts.enableMcp, opts.enableGui);
-    if (opts.enableTools) {
+    // Tools and GUI are enabled by default, unless explicitly disabled
+    const enableTools = !opts.disableTools;
+    const enableGui = !opts.disableGui;
+    const session = new ReplSession(opts.backend, enableTools, opts.enableMcp, enableGui);
+    if (session.enableTools) {
       await session.setupToolCapabilities();
     }
-    if (opts.enableMcp) {
+    if (session.enableMcp) {
       await session.setupMCPCapabilities();
     }
-    if (opts.enableGui) {
+    if (session.enableGui) {
       await session.setupGUICapabilities();
     }
     // Setup Multi-Agent system (always available for task delegation)
