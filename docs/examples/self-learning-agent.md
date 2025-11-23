@@ -650,17 +650,19 @@ export SELF_LEARNING_AUTO_SAVE=false           # Default: false (ask confirmatio
 
 ## 🎉 Zusammenfassung - JETZT LIVE!
 
-Mit der **v3.0.1 Implementierung** ist Self-Learning jetzt:
+Mit der **v3.0.2 Implementierung** ist Self-Learning jetzt:
 
 ✅ **Vollständig integriert** in REPL
 ✅ **Automatisch aktiv** wenn Tools + GUI enabled
 ✅ **Persistiert** in Long-term Memory (Qdrant)
 ✅ **Semantic search** findet ähnliche Tasks
 ✅ **Emergent behavior** - kein Training nötig!
-✅ **Success/Failure Tracking** - nur erfolgreiche Workflows
-✅ **User Confirmation** - volle Kontrolle über gespeichertes Wissen
-✅ **Konfigurierbar** - Similarity threshold & Auto-save
-✅ **/learned Command** - Wissen einsehen und durchsuchen
+✅ **Success/Failure Tracking** - nur erfolgreiche Workflows (v3.0.1)
+✅ **User Confirmation** - volle Kontrolle über gespeichertes Wissen (v3.0.1)
+✅ **Konfigurierbar** - Similarity threshold & Auto-save (v3.0.1)
+✅ **Knowledge Management** - Statistiken, Export, Import (NEW v3.0.2)
+✅ **Team Collaboration** - Global Memory Sharing (NEW v3.0.2)
+✅ **Backup & Restore** - JSON Export/Import (NEW v3.0.2)
 
 **Das bedeutet:**
 - Agent lernt **automatisch** aus Internet-Tutorials
@@ -668,14 +670,30 @@ Mit der **v3.0.1 Implementierung** ist Self-Learning jetzt:
 - Agent **fragt** vor dem Speichern (optional)
 - Agent **wiederverwendet** Wissen bei ähnlichen Tasks
 - User hat **volle Kontrolle** über Knowledge Base
-- **Konfigurierbar** via Environment Variables
+- **Teams können Wissen teilen** über Global Memory (v3.0.2)
+- **Backup & Migration** via JSON Export/Import (v3.0.2)
+- **Statistiken & Analytics** für Lern-Fortschritt (v3.0.2)
 
-**Neue Commands:**
-- `/learned` - Zeige alle gelernten Tasks
-- `/learned <query>` - Suche in gelerntem Wissen
+**Alle Commands (v3.0.2):**
+- `/learned [query]` - Zeige/suche gelernte Tasks
+- `/stats` - Zeige Lern-Statistiken (Tasks, Quellen, Aktivität)
+- `/forget <query>` - Lösche gelerntes Wissen
+- `/share <query>` - Teile Wissen ins Global Memory (Team)
+- `/import <query>` - Importiere aus Global Memory
+- `/export [file]` - Exportiere alle Tasks als JSON
+- `/load-knowledge <file>` - Lade Tasks aus JSON-Datei
 
-**Neue Environment Variables:**
+**Environment Variables:**
 - `SELF_LEARNING_SIMILARITY_THRESHOLD` - Similarity threshold (default: 0.8)
 - `SELF_LEARNING_AUTO_SAVE` - Skip confirmation prompt (default: false)
+
+**Complete Knowledge Lifecycle (v3.0.2):**
+1. **Learn** - Automatisch aus Tutorials lernen
+2. **View** - Mit `/learned` durchsuchen
+3. **Analyze** - Mit `/stats` Statistiken anzeigen
+4. **Share** - Mit `/share` ins Team-Memory teilen
+5. **Export** - Mit `/export` als Backup speichern
+6. **Import** - Mit `/import` oder `/load-knowledge` wiederherstellen
+7. **Forget** - Mit `/forget` selektiv löschen
 
 Siehe auch: **[FEATURE_STATUS.md](../../FEATURE_STATUS.md)** für vollständigen Implementierungs-Status.

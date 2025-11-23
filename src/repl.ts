@@ -266,6 +266,18 @@ export class ReplSession {
       await this.cmdHistory(arg);
     } else if (verb === 'learned') {
       await this.cmdLearned(arg);
+    } else if (verb === 'stats' || verb === 'statistics') {
+      await this.cmdStats();
+    } else if (verb === 'share') {
+      await this.cmdShare(arg);
+    } else if (verb === 'import') {
+      await this.cmdImport(arg);
+    } else if (verb === 'export') {
+      await this.cmdExport(arg);
+    } else if (verb === 'load-knowledge') {
+      await this.cmdLoadKnowledge(arg);
+    } else if (verb === 'forget') {
+      await this.cmdForget(arg);
     } else if (verb === 'token') {
       await this.cmdToken(arg);
     } else if (verb === 'screenshot' || verb === 'ss' || verb === 'image' || verb === 'img') {
@@ -534,13 +546,19 @@ ${this.toolExecutor ? `     🔧 System Tools: ${toolStatus}
   Requires: OPENAI_API_KEY (uses GPT-4 Vision)
 
 🔧 UTILITIES
-  /tools            Show available CLI tools (alias: /t)
-  /history [query]  Search prompt history (alias: /hist)
-  /learned [query]  Show learned knowledge from self-learning
-  /token <cmd>      Manage OAuth tokens
-  /clear            Clear screen (alias: /c)
-  /help             Show this help (alias: /h)
-  /exit             Quit (alias: /quit)
+  /tools               Show available CLI tools (alias: /t)
+  /history [query]     Search prompt history (alias: /hist)
+  /learned [query]     Show learned knowledge from self-learning
+  /stats               Show self-learning statistics and analytics
+  /share <query>       Share learned knowledge to global memory (team sharing)
+  /import <query>      Import learned knowledge from global memory
+  /export [filename]   Export learned knowledge to JSON file
+  /load-knowledge <f>  Load learned knowledge from JSON file
+  /forget <query>      Delete learned knowledge by search query
+  /token <cmd>         Manage OAuth tokens
+  /clear               Clear screen (alias: /c)
+  /help                Show this help (alias: /h)
+  /exit                Quit (alias: /quit)
 
 💡 TIPS:
   • Workflows support arguments via $TASK and $1, $2, etc.
@@ -1344,6 +1362,494 @@ ${steps}`;
       console.log('\n💡 Tip: Use similar queries to reuse this knowledge automatically!\n');
     } catch (error: any) {
       console.error(`❌ Error retrieving learned knowledge: ${error.message}`);
+    }
+  }
+
+  /**
+   * Show learning statistics
+   */
+  async cmdStats(): Promise<void> {
+    if (!this.askStoreHandler || !this.askStoreHandler.isEnabled()) {
+      console.log('❌ Statistics not available (requires Qdrant and --enable-tools --enable-gui)');
+      console.log('\n💡 To enable statistics:');
+      console.log('   1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant');
+      console.log('   2. Run: cacli --enable-tools --enable-gui\n');
+      return;
+    }
+
+    console.log('\n📊 Self-Learning Statistics\n');
+
+    try {
+      // Get all learned tasks
+      const allResults = await this.askStoreHandler.searchPrompts('', 1000);
+      const learnedTasks = allResults.filter(r => r.metadata?.type === 'learned_task');
+
+      if (learnedTasks.length === 0) {
+        console.log('No learned tasks yet.\n');
+        return;
+      }
+
+      // Calculate statistics
+      const totalTasks = learnedTasks.length;
+
+      // Extract timestamps
+      const timestamps = learnedTasks
+        .map(t => t.metadata?.learned_at ? new Date(t.metadata.learned_at).getTime() : 0)
+        .filter(t => t > 0)
+        .sort((a, b) => a - b);
+
+      const oldestDate = timestamps.length > 0 ? new Date(timestamps[0]).toLocaleString() : 'Unknown';
+      const newestDate = timestamps.length > 0 ? new Date(timestamps[timestamps.length - 1]).toLocaleString() : 'Unknown';
+
+      // Count tutorial sources
+      const sources: Record<string, number> = {};
+      learnedTasks.forEach(task => {
+        const url = task.metadata?.tutorialUrl || 'unknown';
+        try {
+          const domain = url !== 'unknown' ? new URL(url).hostname : 'unknown';
+          sources[domain] = (sources[domain] || 0) + 1;
+        } catch {
+          sources['unknown'] = (sources['unknown'] || 0) + 1;
+        }
+      });
+
+      // Sort sources by count
+      const sortedSources = Object.entries(sources)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      // Calculate average tasks per week (if we have date range)
+      let tasksPerWeek = 0;
+      if (timestamps.length > 1) {
+        const daysDiff = (timestamps[timestamps.length - 1] - timestamps[0]) / (1000 * 60 * 60 * 24);
+        const weeksDiff = Math.max(daysDiff / 7, 1);
+        tasksPerWeek = totalTasks / weeksDiff;
+      }
+
+      // Display statistics
+      console.log(`📈 Overview:`);
+      console.log(`   Total learned tasks: ${totalTasks}`);
+      console.log(`   First learned: ${oldestDate}`);
+      console.log(`   Most recent: ${newestDate}`);
+      if (tasksPerWeek > 0) {
+        console.log(`   Average: ${tasksPerWeek.toFixed(1)} tasks/week`);
+      }
+      console.log('');
+
+      console.log(`🔗 Top Tutorial Sources:`);
+      sortedSources.forEach(([domain, count], index) => {
+        const percentage = ((count / totalTasks) * 100).toFixed(1);
+        console.log(`   ${index + 1}. ${domain} - ${count} tasks (${percentage}%)`);
+      });
+      console.log('');
+
+      // Recent activity (last 7 days, 30 days)
+      const now = Date.now();
+      const last7Days = timestamps.filter(t => (now - t) < 7 * 24 * 60 * 60 * 1000).length;
+      const last30Days = timestamps.filter(t => (now - t) < 30 * 24 * 60 * 60 * 1000).length;
+
+      console.log(`🕐 Recent Activity:`);
+      console.log(`   Last 7 days: ${last7Days} tasks`);
+      console.log(`   Last 30 days: ${last30Days} tasks`);
+      console.log('');
+
+      console.log(`💡 Use /learned to view all tasks or /forget to delete tasks\n`);
+    } catch (error: any) {
+      console.error(`❌ Error calculating statistics: ${error.message}`);
+    }
+  }
+
+  /**
+   * Share learned knowledge to global memory (cross-project)
+   */
+  async cmdShare(query?: string): Promise<void> {
+    if (!this.askStoreHandler || !this.askStoreHandler.isEnabled()) {
+      console.log('❌ Sharing not available (requires Qdrant and --enable-tools --enable-gui)');
+      console.log('\n💡 To enable sharing:');
+      console.log('   1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant');
+      console.log('   2. Run: cacli --enable-tools --enable-gui\n');
+      return;
+    }
+
+    if (!query) {
+      console.log('❌ Usage: /share <search query>');
+      console.log('\nExample: /share watermark');
+      console.log('         /share GIMP tutorial\n');
+      console.log('💡 This shares learned knowledge to global memory,');
+      console.log('   making it available across all projects.\n');
+      return;
+    }
+
+    console.log(`\n🔍 Searching for learned tasks matching "${query}"...\n`);
+
+    try {
+      // Search for learned tasks matching the query
+      const results = await this.askStoreHandler.searchPrompts(query, 10);
+      const learnedTasks = results.filter(r => r.metadata?.type === 'learned_task');
+
+      if (learnedTasks.length === 0) {
+        console.log('No learned tasks found matching your query.\n');
+        return;
+      }
+
+      // Show matching tasks
+      console.log('Found the following learned tasks:\n');
+      learnedTasks.forEach((task, index) => {
+        const taskName = task.metadata?.task || 'Unnamed task';
+        const learnedAt = task.metadata?.learned_at
+          ? new Date(task.metadata.learned_at).toLocaleString()
+          : 'Unknown';
+        const similarity = (task as any).similarity
+          ? ` (${((task as any).similarity * 100).toFixed(1)}% match)`
+          : '';
+
+        console.log(`${index + 1}. ${taskName}${similarity}`);
+        console.log(`   📅 Learned: ${learnedAt}`);
+        console.log(`   🆔 ID: ${task.id.substring(0, 12)}...`);
+        console.log('');
+      });
+
+      // Ask for confirmation
+      const { shouldShare } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldShare',
+          message: `Share ${learnedTasks.length} task(s) to global memory?`,
+          default: true
+        }
+      ]);
+
+      if (!shouldShare) {
+        console.log('⏭️  No tasks shared\n');
+        return;
+      }
+
+      // Share tasks
+      let shared = 0;
+      for (const task of learnedTasks) {
+        try {
+          await this.askStoreHandler.shareToGlobal(task.id);
+          shared++;
+        } catch (error: any) {
+          console.error(`❌ Failed to share task ${task.id.substring(0, 8)}...: ${error.message}`);
+        }
+      }
+
+      console.log(`\n✅ Successfully shared ${shared} of ${learnedTasks.length} task(s) to global memory`);
+      console.log(`💡 Other projects can now import this knowledge with /import\n`);
+    } catch (error: any) {
+      console.error(`❌ Error sharing knowledge: ${error.message}`);
+    }
+  }
+
+  /**
+   * Import learned knowledge from global memory
+   */
+  async cmdImport(query?: string): Promise<void> {
+    if (!this.askStoreHandler || !this.askStoreHandler.isEnabled()) {
+      console.log('❌ Import not available (requires Qdrant and --enable-tools --enable-gui)');
+      console.log('\n💡 To enable import:');
+      console.log('   1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant');
+      console.log('   2. Run: cacli --enable-tools --enable-gui\n');
+      return;
+    }
+
+    if (!query) {
+      console.log('❌ Usage: /import <search query>');
+      console.log('\nExample: /import watermark');
+      console.log('         /import GIMP tutorial\n');
+      console.log('💡 This imports learned knowledge from global memory,');
+      console.log('   shared by other projects or team members.\n');
+      return;
+    }
+
+    console.log(`\n🔍 Searching global memory for "${query}"...\n`);
+
+    try {
+      // Search global memory
+      const results = await this.askStoreHandler.importFromGlobal(query, 10);
+      const learnedTasks = results.filter(r => r.metadata?.type === 'learned_task');
+
+      if (learnedTasks.length === 0) {
+        console.log('No learned tasks found in global memory.\n');
+        console.log('💡 Use /share to add knowledge to global memory first.\n');
+        return;
+      }
+
+      // Show matching tasks
+      console.log('Found the following tasks in global memory:\n');
+      learnedTasks.forEach((task, index) => {
+        const taskName = task.metadata?.task || 'Unnamed task';
+        const sharedAt = task.metadata?.shared_at
+          ? new Date(task.metadata.shared_at).toLocaleString()
+          : 'Unknown';
+        const sharedFrom = task.metadata?.shared_from_project || 'unknown project';
+        const similarity = (task as any).similarity
+          ? ` (${((task as any).similarity * 100).toFixed(1)}% match)`
+          : '';
+
+        console.log(`${index + 1}. ${taskName}${similarity}`);
+        console.log(`   📅 Shared: ${sharedAt}`);
+        console.log(`   📦 From: ${sharedFrom}`);
+        console.log(`   🆔 ID: ${task.id.substring(0, 12)}...`);
+        console.log('');
+      });
+
+      // Ask for confirmation
+      const { shouldImport } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldImport',
+          message: `Import ${learnedTasks.length} task(s) to this project?`,
+          default: true
+        }
+      ]);
+
+      if (!shouldImport) {
+        console.log('⏭️  No tasks imported\n');
+        return;
+      }
+
+      // Import tasks (store them in local long-term memory)
+      let imported = 0;
+      for (const task of learnedTasks) {
+        try {
+          await this.askStoreHandler.storePrompt({
+            agent: 'self-learning',
+            text: task.text,
+            timestamp: new Date(),
+            metadata: {
+              ...task.metadata,
+              imported_at: new Date().toISOString(),
+              imported_from: 'global_memory'
+            }
+          });
+          imported++;
+        } catch (error: any) {
+          console.error(`❌ Failed to import task: ${error.message}`);
+        }
+      }
+
+      console.log(`\n✅ Successfully imported ${imported} of ${learnedTasks.length} task(s)`);
+      console.log(`💡 Use /learned to view your imported knowledge\n`);
+    } catch (error: any) {
+      console.error(`❌ Error importing knowledge: ${error.message}`);
+    }
+  }
+
+  /**
+   * Export learned knowledge to JSON file
+   */
+  async cmdExport(filename?: string): Promise<void> {
+    if (!this.askStoreHandler || !this.askStoreHandler.isEnabled()) {
+      console.log('❌ Export not available (requires Qdrant and --enable-tools --enable-gui)');
+      console.log('\n💡 To enable export:');
+      console.log('   1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant');
+      console.log('   2. Run: cacli --enable-tools --enable-gui\n');
+      return;
+    }
+
+    const outputFile = filename || `learned-knowledge-${Date.now()}.json`;
+
+    console.log('\n📤 Exporting learned knowledge...\n');
+
+    try {
+      // Get all learned tasks
+      const allResults = await this.askStoreHandler.searchPrompts('', 1000);
+      const learnedTasks = allResults.filter(r => r.metadata?.type === 'learned_task');
+
+      if (learnedTasks.length === 0) {
+        console.log('No learned tasks to export.\n');
+        return;
+      }
+
+      // Prepare export data
+      const exportData = {
+        version: '1.0',
+        exported_at: new Date().toISOString(),
+        total_tasks: learnedTasks.length,
+        tasks: learnedTasks.map(task => ({
+          id: task.id,
+          text: task.text,
+          metadata: task.metadata
+        }))
+      };
+
+      // Write to file
+      const fs = await import('fs/promises');
+      await fs.writeFile(outputFile, JSON.stringify(exportData, null, 2), 'utf-8');
+
+      console.log(`✅ Successfully exported ${learnedTasks.length} task(s)`);
+      console.log(`📁 File: ${outputFile}`);
+      console.log(`📊 Size: ${(JSON.stringify(exportData).length / 1024).toFixed(2)} KB\n`);
+      console.log(`💡 Use /load-knowledge ${outputFile} to import this file\n`);
+    } catch (error: any) {
+      console.error(`❌ Error exporting knowledge: ${error.message}`);
+    }
+  }
+
+  /**
+   * Load learned knowledge from JSON file
+   */
+  async cmdLoadKnowledge(filename?: string): Promise<void> {
+    if (!this.askStoreHandler || !this.askStoreHandler.isEnabled()) {
+      console.log('❌ Load not available (requires Qdrant and --enable-tools --enable-gui)');
+      console.log('\n💡 To enable load:');
+      console.log('   1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant');
+      console.log('   2. Run: cacli --enable-tools --enable-gui\n');
+      return;
+    }
+
+    if (!filename) {
+      console.log('❌ Usage: /load-knowledge <filename>');
+      console.log('\nExample: /load-knowledge learned-knowledge-1234567890.json\n');
+      return;
+    }
+
+    console.log(`\n📥 Loading learned knowledge from ${filename}...\n`);
+
+    try {
+      const fs = await import('fs/promises');
+      const fileContent = await fs.readFile(filename, 'utf-8');
+      const importData = JSON.parse(fileContent);
+
+      // Validate format
+      if (!importData.version || !importData.tasks || !Array.isArray(importData.tasks)) {
+        throw new Error('Invalid export file format');
+      }
+
+      console.log(`📊 File info:`);
+      console.log(`   Version: ${importData.version}`);
+      console.log(`   Exported: ${importData.exported_at ? new Date(importData.exported_at).toLocaleString() : 'Unknown'}`);
+      console.log(`   Total tasks: ${importData.total_tasks}`);
+      console.log('');
+
+      // Ask for confirmation
+      const { shouldLoad } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldLoad',
+          message: `Load ${importData.tasks.length} task(s) from file?`,
+          default: true
+        }
+      ]);
+
+      if (!shouldLoad) {
+        console.log('⏭️  No tasks loaded\n');
+        return;
+      }
+
+      // Load tasks
+      let loaded = 0;
+      for (const task of importData.tasks) {
+        try {
+          await this.askStoreHandler.storePrompt({
+            agent: 'self-learning',
+            text: task.text,
+            timestamp: new Date(),
+            metadata: {
+              ...task.metadata,
+              imported_at: new Date().toISOString(),
+              imported_from: 'file'
+            }
+          });
+          loaded++;
+        } catch (error: any) {
+          console.error(`❌ Failed to load task: ${error.message}`);
+        }
+      }
+
+      console.log(`\n✅ Successfully loaded ${loaded} of ${importData.tasks.length} task(s)`);
+      console.log(`💡 Use /learned to view your loaded knowledge\n`);
+    } catch (error: any) {
+      if ((error as any).code === 'ENOENT') {
+        console.error(`❌ File not found: ${filename}`);
+      } else if (error instanceof SyntaxError) {
+        console.error(`❌ Invalid JSON file: ${error.message}`);
+      } else {
+        console.error(`❌ Error loading knowledge: ${error.message}`);
+      }
+      console.log('');
+    }
+  }
+
+  /**
+   * Forget/delete learned knowledge
+   */
+  async cmdForget(query?: string): Promise<void> {
+    if (!this.askStoreHandler || !this.askStoreHandler.isEnabled()) {
+      console.log('❌ Self-learning not available (requires Qdrant and --enable-tools --enable-gui)');
+      console.log('\n💡 To enable self-learning:');
+      console.log('   1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant');
+      console.log('   2. Run: cacli --enable-tools --enable-gui\n');
+      return;
+    }
+
+    if (!query) {
+      console.log('❌ Usage: /forget <search query>');
+      console.log('\nExample: /forget watermark');
+      console.log('         /forget GIMP tutorial\n');
+      return;
+    }
+
+    console.log(`\n🔍 Searching for learned tasks matching "${query}"...\n`);
+
+    try {
+      // Search for learned tasks matching the query
+      const results = await this.askStoreHandler.searchPrompts(query, 10);
+      const learnedTasks = results.filter(r => r.metadata?.type === 'learned_task');
+
+      if (learnedTasks.length === 0) {
+        console.log('No learned tasks found matching your query.\n');
+        return;
+      }
+
+      // Show matching tasks
+      console.log('Found the following learned tasks:\n');
+      learnedTasks.forEach((task, index) => {
+        const taskName = task.metadata?.task || 'Unnamed task';
+        const learnedAt = task.metadata?.learned_at
+          ? new Date(task.metadata.learned_at).toLocaleString()
+          : 'Unknown';
+        const similarity = (task as any).similarity
+          ? ` (${((task as any).similarity * 100).toFixed(1)}% match)`
+          : '';
+
+        console.log(`${index + 1}. ${taskName}${similarity}`);
+        console.log(`   📅 Learned: ${learnedAt}`);
+        console.log(`   🆔 ID: ${task.id.substring(0, 12)}...`);
+        console.log('');
+      });
+
+      // Ask for confirmation
+      const { shouldDelete } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldDelete',
+          message: `Delete ${learnedTasks.length} learned task(s)?`,
+          default: false
+        }
+      ]);
+
+      if (!shouldDelete) {
+        console.log('⏭️  No tasks deleted\n');
+        return;
+      }
+
+      // Delete tasks
+      let deleted = 0;
+      for (const task of learnedTasks) {
+        try {
+          await this.askStoreHandler.deletePrompt(task.id);
+          deleted++;
+        } catch (error: any) {
+          console.error(`❌ Failed to delete task ${task.id.substring(0, 8)}...: ${error.message}`);
+        }
+      }
+
+      console.log(`\n✅ Successfully deleted ${deleted} of ${learnedTasks.length} task(s)\n`);
+    } catch (error: any) {
+      console.error(`❌ Error deleting learned knowledge: ${error.message}`);
     }
   }
 

@@ -227,13 +227,30 @@ Let me learn how to do this from the GIMP documentation...
 📚 Using saved knowledge:
 [Führt sofort aus - 5x schneller!]
 
-# Gelerntes Wissen anzeigen
+# Gelerntes Wissen verwalten (v3.0.2 - NEW!)
 > /learned
 📚 Learned Knowledge
 1. Create a watermark in GIMP
    📅 Learned: 2025-11-23 15:45:30
    🔗 Tutorial: https://docs.gimp.org/watermark-tutorial
    📝 Steps: launch_app, create_image, add_text, save_image
+
+> /stats
+📊 Self-Learning Statistics
+📈 Overview:
+   Total learned tasks: 15
+   Average: 2.3 tasks/week
+🔗 Top Tutorial Sources:
+   1. docs.gimp.org - 8 tasks (53.3%)
+   2. photoshop.com - 5 tasks (33.3%)
+
+> /share watermark
+✅ Successfully shared 1 task(s) to global memory
+💡 Other projects can now import this knowledge with /import
+
+> /export my-knowledge.json
+✅ Successfully exported 15 task(s)
+📁 File: my-knowledge.json
 ```
 
 ---

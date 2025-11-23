@@ -167,17 +167,33 @@ cacli --enable-tools --enable-gui
 > /learned watermark
 ```
 
-**Features (v3.0.1):**
+**Features (v3.0.2 - COMPLETE):**
 - ✅ Semantic search for previously learned tasks
 - ✅ Automatic knowledge saving (curl/wget + GUI combination)
-- ✅ **User confirmation before saving** (NEW v3.0.1)
-- ✅ **Configurable similarity threshold** (NEW v3.0.1)
-- ✅ **Success/failure tracking** (NEW v3.0.1)
-- ✅ **/learned command** for knowledge management (NEW v3.0.1)
+- ✅ **User confirmation before saving** (v3.0.1)
+- ✅ **Configurable similarity threshold** (v3.0.1)
+- ✅ **Success/failure tracking** (v3.0.1)
+- ✅ **/learned command** - View and search learned knowledge (v3.0.1)
+- ✅ **/stats command** - Learning statistics and analytics (NEW v3.0.2)
+- ✅ **/forget command** - Delete learned knowledge (NEW v3.0.2)
+- ✅ **/share command** - Share to global memory for team collaboration (NEW v3.0.2)
+- ✅ **/import command** - Import from global memory (NEW v3.0.2)
+- ✅ **/export command** - Export to JSON file for backup (NEW v3.0.2)
+- ✅ **/load-knowledge command** - Load from JSON file (NEW v3.0.2)
 - ✅ Tutorial URL extraction and storage
 - ✅ Step-by-step execution tracking
 - ✅ Knowledge retention across sessions
 - ✅ Emergent behavior (no explicit teaching needed)
+
+**New Commands (v3.0.2):**
+```bash
+/stats               # Show learning statistics (tasks, sources, activity)
+/forget <query>      # Delete learned knowledge by search
+/share <query>       # Share knowledge to global memory (team)
+/import <query>      # Import from global memory
+/export [file]       # Export all knowledge to JSON
+/load-knowledge <f>  # Load knowledge from JSON file
+```
 
 **Environment Variables (v3.0.1):**
 ```bash
@@ -186,8 +202,8 @@ SELF_LEARNING_AUTO_SAVE=false           # Skip confirmation prompt
 ```
 
 **Documentation:**
-- ✅ `docs/examples/self-learning-agent.md` - Updated with v3.0.1 features
-- ✅ `README.md` - Comprehensive example and configuration
+- ✅ `docs/examples/self-learning-agent.md` - Updated with v3.0.2 features
+- ✅ `README.md` - Comprehensive examples with all commands
 
 ---
 
@@ -321,6 +337,18 @@ cacli
 
 ### Recent Commits
 
+**v3.0.2** (2025-11-23) - Advanced Knowledge Management:
+- ✅ Implemented `/stats` command - Learning statistics and analytics
+- ✅ Implemented `/forget` command - Delete learned knowledge with confirmation
+- ✅ Implemented `/share` command - Share knowledge to global memory (team collaboration)
+- ✅ Implemented `/import` command - Import knowledge from global memory
+- ✅ Implemented `/export` command - Export all knowledge to JSON file
+- ✅ Implemented `/load-knowledge` command - Load knowledge from JSON file
+- ✅ Added `deletePrompt()`, `shareToGlobal()`, `importFromGlobal()` to ask-store-handler
+- ✅ Added `deleteLong()`, `deleteGlobal()` to memory-manager
+- ✅ Complete knowledge lifecycle: learn → view → analyze → share → export → forget
+- ~380 lines added across src/repl.ts, src/orchestrator/ask-store-handler.ts, src/memory/memory-manager.ts
+
 **v3.0.1** (2025-11-23) - Self-Learning Improvements:
 - ✅ Added user confirmation before saving learned knowledge
 - ✅ Made similarity threshold configurable via environment variable
@@ -330,7 +358,7 @@ cacli
 - ✅ Added environment variables: `SELF_LEARNING_SIMILARITY_THRESHOLD`, `SELF_LEARNING_AUTO_SAVE`
 - ~130 lines added to src/repl.ts
 
-**Commit 5444168** (2025-11-23) - v3.0.0:
+**v3.0.0** (2025-11-23) - Commit 5444168:
 - ✅ Implemented self-learning knowledge retention
 - ✅ Added `checkLearnedKnowledge()` semantic search
 - ✅ Added `saveLearnedKnowledge()` storage
