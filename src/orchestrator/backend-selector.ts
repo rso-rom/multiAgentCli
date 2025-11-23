@@ -17,9 +17,28 @@ export interface BackendOption {
  */
 export class BackendSelector {
   /**
+   * Get available Ollama models by querying the Ollama API
+   */
+  private static async getOllamaModels(): Promise<string[]> {
+    try {
+      const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+      const response = await fetch(`${ollamaUrl}/api/tags`);
+      const data = await response.json();
+
+      if (data.models && Array.isArray(data.models)) {
+        return data.models.map((m: any) => m.name);
+      }
+    } catch {
+      // Ollama not available, use defaults
+    }
+
+    return ['llama3', 'codellama', 'mistral']; // Fallback
+  }
+
+  /**
    * Detect available backends based on environment configuration
    */
-  static detectAvailableBackends(): BackendOption[] {
+  static async detectAvailableBackends(): Promise<BackendOption[]> {
     const options: BackendOption[] = [];
 
     // Check Anthropic/Claude
@@ -90,33 +109,41 @@ export class BackendSelector {
       });
     }
 
-    // Check Ollama (always try to add, may be available)
-    const ollamaModel = process.env.OLLAMA_MODEL || 'llama3';
-    options.push({
-      name: `Ollama (${ollamaModel})`,
-      backend: 'ollama',
-      model: ollamaModel,
-      available: true, // Assume available, will fail gracefully if not
-      description: 'Local, free, offline-capable',
-      cost: 'Free'
-    });
+    // Check Ollama (dynamically detect available models)
+    const ollamaModels = await this.getOllamaModels();
+    const ollamaDescriptions: Record<string, string> = {
+      'llama3': 'General purpose, versatile',
+      'llama3.2': 'Latest version, improved',
+      'codellama': 'Code-specialized model',
+      'mistral': 'Fast and capable',
+      'mixtral': 'High quality, mixture of experts',
+      'phi': 'Small but powerful',
+      'qwen': 'Multilingual support',
+      'gemma': 'Google model, efficient'
+    };
 
-    // Add more Ollama models if available
+    for (const model of ollamaModels) {
+      const baseModel = model.split(':')[0]; // Remove tag (e.g., llama3:latest → llama3)
+      const description = ollamaDescriptions[baseModel] || 'Local model';
+
+      options.push({
+        name: `Ollama (${model})`,
+        backend: 'ollama',
+        model: model,
+        available: true,
+        description: `${description}, free`,
+        cost: 'Free'
+      });
+    }
+
+    // Add option for custom model name
     options.push({
-      name: 'Ollama (codellama)',
-      backend: 'ollama',
-      model: 'codellama',
+      name: 'Custom Model (enter name manually)',
+      backend: 'custom',
+      model: 'custom',
       available: true,
-      description: 'Code-specialized model',
-      cost: 'Free'
-    });
-    options.push({
-      name: 'Ollama (mistral)',
-      backend: 'ollama',
-      model: 'mistral',
-      available: true,
-      description: 'Fast and capable',
-      cost: 'Free'
+      description: 'Specify any model name',
+      cost: 'Variable'
     });
 
     return options;
@@ -130,7 +157,7 @@ export class BackendSelector {
     agentRole: string,
     complexity: 'simple' | 'moderate' | 'complex'
   ): Promise<{ backend: string; model: string }> {
-    const options = this.detectAvailableBackends();
+    const options = await this.detectAvailableBackends();
 
     if (options.length === 0) {
       console.log('⚠️  No backends configured. Using mock backend.');
@@ -163,6 +190,29 @@ export class BackendSelector {
     if (selection === 'auto') {
       // Use intelligent auto-selection
       return this.autoSelect(complexity, options);
+    }
+
+    // Handle custom model input
+    if (selection.backend === 'custom') {
+      const { customBackend, customModel } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'customBackend',
+          message: 'Select backend for custom model:',
+          choices: ['ollama', 'openai', 'claude', 'openwebui']
+        },
+        {
+          type: 'input',
+          name: 'customModel',
+          message: 'Enter model name:',
+          validate: (input: string) => input.trim().length > 0 || 'Model name is required'
+        }
+      ]);
+
+      return {
+        backend: customBackend,
+        model: customModel.trim()
+      };
     }
 
     return {
