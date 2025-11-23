@@ -4,6 +4,8 @@
  * Generates workflows on-the-fly based on requirements analysis
  */
 
+import { BackendSelector } from './backend-selector';
+
 export interface RequirementsAnalysis {
   scope: string;
   components: string[];
@@ -26,18 +28,19 @@ export class DynamicWorkflowGenerator {
   /**
    * Generate a workflow based on requirements analysis
    */
-  static generateFromRequirements(
+  static async generateFromRequirements(
     task: string,
     requirements: RequirementsAnalysis,
     defaultBackend?: string,
-    defaultModel?: string
-  ): {
+    defaultModel?: string,
+    interactive: boolean = true
+  ): Promise<{
     name: string;
     description: string;
     agents: string[];
     agentConfigs: AgentModelConfig[];
     reasoning: string;
-  } {
+  }> {
     const agents: string[] = [];
     const agentConfigs: AgentModelConfig[] = [];
     const reasons: string[] = [];
@@ -95,9 +98,40 @@ export class DynamicWorkflowGenerator {
     reasons.push('Technical Writer always provides documentation');
 
     // Generate agent configurations with backend/model assignment
-    for (const agentName of agents) {
-      const config = this.getAgentModelConfig(agentName, requirements.complexity, defaultBackend, defaultModel);
-      agentConfigs.push(config);
+    if (interactive && BackendSelector.hasMultipleBackends()) {
+      // Interactive mode: Ask user for backend selection
+      const agentInfos = agents.map(name => ({
+        name,
+        role: this.getAgentRole(name)
+      }));
+
+      const selections = await BackendSelector.selectForWorkflow(
+        agentInfos,
+        requirements.complexity,
+        false // Don't ask per agent by default
+      );
+
+      // Build agent configs from selections
+      for (const agentName of agents) {
+        const selection = selections.get(agentName);
+        if (selection) {
+          agentConfigs.push({
+            name: agentName,
+            role: this.getAgentRole(agentName),
+            backend: selection.backend,
+            model: selection.model
+          });
+        }
+      }
+
+      // Show summary
+      BackendSelector.showSelectionSummary(selections);
+    } else {
+      // Non-interactive mode: Use automatic selection
+      for (const agentName of agents) {
+        const config = this.getAgentModelConfig(agentName, requirements.complexity, defaultBackend, defaultModel);
+        agentConfigs.push(config);
+      }
     }
 
     const description = `Auto-generated workflow for: ${task}`;
@@ -110,6 +144,25 @@ export class DynamicWorkflowGenerator {
       agentConfigs,
       reasoning: `Workflow composition:\n  - ${reasoning}`
     };
+  }
+
+  /**
+   * Get agent role description
+   */
+  static getAgentRole(agentName: string): string {
+    const roles: Record<string, string> = {
+      requirements: 'Requirements Engineer',
+      architect: 'Software Architect',
+      developer: 'Full-stack Developer',
+      backend: 'Backend Developer',
+      frontend: 'Frontend Developer',
+      database: 'Database Designer',
+      tester: 'Test Engineer',
+      devops: 'DevOps Engineer',
+      documenter: 'Technical Writer'
+    };
+
+    return roles[agentName] || agentName.charAt(0).toUpperCase() + agentName.slice(1);
   }
 
   /**

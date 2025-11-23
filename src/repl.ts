@@ -202,7 +202,7 @@ export class ReplSession {
       }
 
       // Step 3: Generate workflow based on requirements
-      const workflowPlan = DynamicWorkflowGenerator.generateFromRequirements(input, requirements);
+      const workflowPlan = await DynamicWorkflowGenerator.generateFromRequirements(input, requirements);
 
       console.log('\n📊 Requirements Analysis Complete!\n');
       console.log(`Scope: ${requirements.scope}`);
