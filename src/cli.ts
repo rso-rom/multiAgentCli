@@ -150,15 +150,20 @@ configCmd
   .description('Auto-configure a specific backend (e.g., gemini, mistral)')
   .option('--api-key <key>', 'API key for the backend')
   .option('--no-web-search', 'Disable web search (use only LLM knowledge)')
+  .option('--no-agentic-tools', 'Disable LLM tool use (curl/wget)')
   .action(async (name: string, opts) => {
     try {
       const useWebSearch = opts.webSearch !== false;
-      const configurator = new AutoConfigurator(undefined, useWebSearch);
+      const useAgenticTools = opts.agenticTools !== false;
+      const configurator = new AutoConfigurator(undefined, useWebSearch, useAgenticTools);
 
-      if (useWebSearch) {
-        console.log('🌐 Web search enabled - will fetch live documentation');
+      console.log('\n🎯 Configuration mode:');
+      if (useAgenticTools) {
+        console.log('   🤖 Agentic Tool Use: Enabled (LLM can use curl/wget)');
+      } else if (useWebSearch) {
+        console.log('   🌐 Web Search: Enabled (pre-fetch documentation)');
       } else {
-        console.log('📚 Using LLM knowledge only (web search disabled)');
+        console.log('   📚 LLM Knowledge Only: No web access');
       }
 
       const success = await configurator.configure(name, opts.apiKey);

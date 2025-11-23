@@ -14,6 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import inquirer from 'inquirer';
 import axios from 'axios';
+import { ToolExecutor } from '../utils/tool-executor';
 
 export interface BackendConfig {
   name: string;
@@ -28,12 +29,16 @@ export class AutoConfigurator {
   private llm: ModelBackend;
   private projectRoot: string;
   private useWebSearch: boolean;
+  private toolExecutor: ToolExecutor;
+  private useAgenticTools: boolean;
 
-  constructor(llm?: ModelBackend, useWebSearch: boolean = true) {
+  constructor(llm?: ModelBackend, useWebSearch: boolean = true, useAgenticTools: boolean = true) {
     // Use configured backend or fallback to any available
     this.llm = llm || getBackend();
     this.projectRoot = path.join(__dirname, '../..');
     this.useWebSearch = useWebSearch;
+    this.toolExecutor = new ToolExecutor();
+    this.useAgenticTools = useAgenticTools;
   }
 
   /**
@@ -187,16 +192,112 @@ export class AutoConfigurator {
   }
 
   /**
+   * Use LLM with tool-use capability for agentic research
+   */
+  private async researchBackendAgentic(backendName: string): Promise<BackendConfig | null> {
+    console.log(`🤖 Starting agentic research for ${backendName}...`);
+
+    let prompt = `You are an AI agent researching the ${backendName} API.
+
+${ToolExecutor.buildToolUsePrompt()}
+
+Your task:
+1. Use tools (curl, wget, http_get) to fetch documentation
+2. Analyze the responses to extract API information
+3. Provide the information in this EXACT format:
+
+API_URL: [the base API endpoint URL]
+AUTH_TYPE: [api-key, oauth, or none]
+DEFAULT_MODEL: [the default/recommended model name]
+SUPPORTS_VISION: [YES or NO]
+SUPPORTS_STREAMING: [YES or NO]
+
+Common documentation URLs to try:
+- https://docs.${backendName}.ai/api-reference
+- https://docs.${backendName}.com/api-reference
+- https://${backendName}.ai/docs/api
+- https://api.${backendName}.ai/docs
+
+Start by using tools to fetch the documentation, then analyze and provide the result.`;
+
+    // Agentic loop: LLM uses tools iteratively
+    let iteration = 0;
+    const maxIterations = 3;
+    let finalResponse = '';
+
+    while (iteration < maxIterations) {
+      iteration++;
+      console.log(`🔄 Agentic iteration ${iteration}/${maxIterations}...`);
+
+      // Get LLM response (may contain tool calls)
+      const response = await this.llm.chat(prompt);
+
+      if (!response || typeof response !== 'string') {
+        break;
+      }
+
+      // Check for tool calls in response
+      const toolCalls = this.toolExecutor.parseToolCalls(response);
+
+      if (toolCalls.length === 0) {
+        // No more tool calls - LLM is done
+        finalResponse = response;
+        break;
+      }
+
+      // Execute tool calls
+      console.log(`🔧 Executing ${toolCalls.length} tool call(s)...`);
+      const toolResults = await this.toolExecutor.executeToolCalls(response);
+
+      // Build feedback for LLM
+      let feedback = '\nTool execution results:\n\n';
+      for (const [key, result] of toolResults.entries()) {
+        if (result.success) {
+          feedback += `✅ ${key}:\n${result.output.substring(0, 1000)}\n\n`;
+        } else {
+          feedback += `❌ ${key} failed: ${result.error}\n\n`;
+        }
+      }
+
+      // Continue the conversation with tool results
+      prompt = `Previous response: ${response}\n\n${feedback}\n\nBased on the tool results above, please provide the API information in the required format:
+
+API_URL: [the base API endpoint URL]
+AUTH_TYPE: [api-key, oauth, or none]
+DEFAULT_MODEL: [the default/recommended model name]
+SUPPORTS_VISION: [YES or NO]
+SUPPORTS_STREAMING: [YES or NO]`;
+    }
+
+    if (!finalResponse) {
+      console.log('⚠️  Agentic research failed, falling back to standard method');
+      return null;
+    }
+
+    return this.parseBackendConfig(finalResponse);
+  }
+
+  /**
    * Use LLM to research backend API structure (with optional web search)
    */
   private async researchBackend(backendName: string): Promise<BackendConfig | null> {
     console.log(`🔍 Researching ${backendName} API...`);
 
-    // Step 1: Try to fetch web documentation
+    // Try agentic tool-use if enabled
+    if (this.useAgenticTools) {
+      console.log('🤖 Using agentic tool-based research...');
+      const agenticResult = await this.researchBackendAgentic(backendName);
+      if (agenticResult) {
+        return agenticResult;
+      }
+      console.log('⚠️  Agentic research failed, falling back to web search...');
+    }
+
+    // Fallback: Traditional web search approach
     const webDocs = await this.fetchWebDocumentation(backendName);
     const githubExamples = await this.searchGitHubExamples(backendName);
 
-    // Step 2: Build enhanced prompt with web data
+    // Build enhanced prompt with web data
     let prompt = `You are a software engineer researching AI model APIs.
 
 Research the ${backendName} API and provide ONLY this information in the following EXACT format:
