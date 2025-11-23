@@ -130,20 +130,22 @@ cacli
 ### 4. Self-Learning (NEW) ✅
 
 **Implementation:**
-- `src/repl.ts`: Lines 927-991 NEW implementation ✅
-  - `checkLearnedKnowledge()` (lines 927-952)
-  - `saveLearnedKnowledge()` (lines 957-991)
+- `src/repl.ts`: Lines 927-1023 NEW implementation ✅
+  - `checkLearnedKnowledge()` (lines 927-987)
+  - `saveLearnedKnowledge()` (lines 989-1023)
+  - `cmdLearned()` (lines 1253-1313) - NEW in v3.0.1 ✅
 - Integration in `askWithTools()`:
   - Lines 718-728: Check learned knowledge before agentic loop ✅
-  - Lines 735-738: Track learning variables ✅
+  - Lines 735-742: Track learning variables + success tracking ✅
   - Lines 762-768: Track curl/wget usage ✅
-  - Lines 793, 800-802: Track GUI steps and save knowledge ✅
+  - Lines 823-860: Success checking + user confirmation + save knowledge ✅
 
 **How It Works:**
-1. **Before execution:** Searches long-term memory for similar tasks (similarity > 0.8)
+1. **Before execution:** Searches long-term memory for similar tasks (configurable similarity threshold)
 2. **If found:** Displays learned knowledge and skips re-learning
 3. **During execution:** Tracks when curl/wget + GUI tools are used together
-4. **After execution:** Automatically saves learned knowledge to memory
+4. **Success checking:** Only saves if ALL GUI operations succeeded
+5. **After execution:** Asks user confirmation (or auto-saves) and stores knowledge
 
 **Storage:**
 - Uses existing 4-level memory system
@@ -157,20 +159,35 @@ cacli
 cacli --enable-tools --enable-gui
 
 > How do I add a watermark in GIMP?
-# First time: Agent fetches tutorial + executes
+# First time: Agent fetches tutorial + executes + asks to save
 # Second time: Agent remembers and reuses knowledge
+
+# View learned knowledge
+> /learned
+> /learned watermark
 ```
 
-**Features:**
+**Features (v3.0.1):**
 - ✅ Semantic search for previously learned tasks
 - ✅ Automatic knowledge saving (curl/wget + GUI combination)
+- ✅ **User confirmation before saving** (NEW v3.0.1)
+- ✅ **Configurable similarity threshold** (NEW v3.0.1)
+- ✅ **Success/failure tracking** (NEW v3.0.1)
+- ✅ **/learned command** for knowledge management (NEW v3.0.1)
 - ✅ Tutorial URL extraction and storage
 - ✅ Step-by-step execution tracking
 - ✅ Knowledge retention across sessions
 - ✅ Emergent behavior (no explicit teaching needed)
 
+**Environment Variables (v3.0.1):**
+```bash
+SELF_LEARNING_SIMILARITY_THRESHOLD=0.8  # Similarity threshold (0.0-1.0)
+SELF_LEARNING_AUTO_SAVE=false           # Skip confirmation prompt
+```
+
 **Documentation:**
-- ⚠️ `docs/examples/self-learning-agent.md` - Needs update with implementation details
+- ✅ `docs/examples/self-learning-agent.md` - Updated with v3.0.1 features
+- ✅ `README.md` - Comprehensive example and configuration
 
 ---
 
@@ -304,7 +321,16 @@ cacli
 
 ### Recent Commits
 
-**Commit 5444168** (2025-11-23):
+**v3.0.1** (2025-11-23) - Self-Learning Improvements:
+- ✅ Added user confirmation before saving learned knowledge
+- ✅ Made similarity threshold configurable via environment variable
+- ✅ Implemented `/learned` command for knowledge management
+- ✅ Added success/failure tracking (only save if all operations succeed)
+- ✅ Updated documentation with comprehensive examples
+- ✅ Added environment variables: `SELF_LEARNING_SIMILARITY_THRESHOLD`, `SELF_LEARNING_AUTO_SAVE`
+- ~130 lines added to src/repl.ts
+
+**Commit 5444168** (2025-11-23) - v3.0.0:
 - ✅ Implemented self-learning knowledge retention
 - ✅ Added `checkLearnedKnowledge()` semantic search
 - ✅ Added `saveLearnedKnowledge()` storage
@@ -350,22 +376,27 @@ npm start -- --help
 - ✅ Self-learning tracking implemented
 - ✅ Knowledge storage implemented
 - ✅ Knowledge retrieval implemented
+- ✅ User confirmation prompt implemented (v3.0.1)
+- ✅ Configurable similarity threshold (v3.0.1)
+- ✅ Success/failure tracking (v3.0.1)
+- ✅ /learned command implemented (v3.0.1)
 
 ---
 
 ## 📝 DOCUMENTATION STATUS
 
-### Up-to-date:
+### Up-to-date (v3.0.1):
+- ✅ `README.md` - Updated with Advanced Capabilities, Self-Learning example, env variables
+- ✅ `docs/examples/self-learning-agent.md` - Updated with v3.0.1 features and implementation
 - ✅ `docs/features/agent-tool-use.md`
 - ✅ `docs/features/advanced-agent-capabilities.md` (MCP & GUI)
 - ✅ `docs/features/memory-system.md`
 - ✅ `docs/features/oauth.md`
 - ✅ `docs/features/vision.md`
+- ✅ `FEATURE_STATUS.md` - Complete status with v3.0.1 improvements
 
-### Needs Update:
-- ⚠️ `README.md` - Should mention MCP, GUI, Self-Learning
-- ⚠️ `docs/examples/self-learning-agent.md` - Should describe implementation
-- ⚠️ `FINAL_CODE_REVIEW.md` - Outdated, says features not integrated
+### Archived/Deprecated:
+- 📦 `FINAL_CODE_REVIEW.md` - Outdated, superseded by FEATURE_STATUS.md
 
 ---
 
@@ -373,17 +404,27 @@ npm start -- --help
 
 **ALL ADVANCED FEATURES ARE FULLY IMPLEMENTED AND INTEGRATED** ✅
 
+**Version 3.0.1 Status:**
+
 The system now supports:
 1. ✅ Agent Tool Use (curl, git, npm, etc.)
 2. ✅ MCP Integration (VS Code, Obsidian)
 3. ✅ GUI Control (Photoshop, GIMP, etc.)
 4. ✅ Self-Learning (Knowledge retention with semantic memory)
+5. ✅ **NEW in v3.0.1:** User confirmation before saving
+6. ✅ **NEW in v3.0.1:** Configurable similarity threshold
+7. ✅ **NEW in v3.0.1:** Success/failure tracking
+8. ✅ **NEW in v3.0.1:** /learned command for knowledge management
 
-**Total integration:** ~362 lines of code
-**Build status:** ✅ Success
-**All tests:** ✅ Pass
+**Total implementation:** ~492 lines of code (~362 v3.0.0 + ~130 v3.0.1)
+**Build status:** ✅ Success (pending)
+**Documentation:** ✅ Complete and up-to-date
 
-**Next steps:**
-1. Update README.md with feature overview
-2. Update self-learning documentation with implementation details
-3. Archive outdated FINAL_CODE_REVIEW.md
+**Completed in v3.0.1:**
+1. ✅ User confirmation prompts with auto-save option
+2. ✅ Configurable environment variables
+3. ✅ /learned command for viewing and searching learned tasks
+4. ✅ Success tracking (only save when all operations succeed)
+5. ✅ Updated README.md with comprehensive examples
+6. ✅ Updated self-learning-agent.md with v3.0.1 features
+7. ✅ Updated FEATURE_STATUS.md with complete status

@@ -192,6 +192,50 @@ Proceed? (y/n): y
 ✅ Workflow completed! Code in: ./appcoding-example/
 ```
 
+### 🎓 Self-Learning Beispiel (v3.0 - NEW!)
+```bash
+cacli --enable-tools --enable-gui
+
+> Create a watermark in GIMP
+
+Agent:
+Let me learn how to do this from the GIMP documentation...
+
+🔧 Executing 1 system tool(s)...
+[TOOL:curl:https://docs.gimp.org/watermark-tutorial]
+✅ curl executed successfully
+
+🖱️ Executing 4 GUI tool(s)...
+[TOOL:gui:launch_app:gimp]
+[TOOL:gui:create_image:800x600]
+[TOOL:gui:add_text:"© 2025"]
+[TOOL:gui:save_image:/tmp/watermark.png]
+
+💡 I successfully learned this task!
+   Tutorial: https://docs.gimp.org/watermark-tutorial
+   Steps executed: 4
+? Save this knowledge for future use? (Y/n) y
+💡 Knowledge saved for future use!
+
+---
+
+# Zweiter Durchlauf - Agent erinnert sich!
+> Add a watermark to an image in GIMP
+
+💡 I remember learning this before! (94.2% match)
+📅 Learned: 2025-11-23 15:45:30
+📚 Using saved knowledge:
+[Führt sofort aus - 5x schneller!]
+
+# Gelerntes Wissen anzeigen
+> /learned
+📚 Learned Knowledge
+1. Create a watermark in GIMP
+   📅 Learned: 2025-11-23 15:45:30
+   🔗 Tutorial: https://docs.gimp.org/watermark-tutorial
+   📝 Steps: launch_app, create_image, add_text, save_image
+```
+
 ---
 
 ## 🛠️ Backends
@@ -211,6 +255,10 @@ OLLAMA_MODEL=mistral:7b
 # Memory
 USE_QDRANT=true
 QDRANT_URL=http://localhost:6333
+
+# Self-Learning (optional)
+SELF_LEARNING_SIMILARITY_THRESHOLD=0.8  # Similarity threshold (0.0-1.0)
+SELF_LEARNING_AUTO_SAVE=false           # Skip confirmation prompt
 ```
 
 ---

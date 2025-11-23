@@ -831,7 +831,30 @@ Provide your answer based on tool results when available.`;
         // Save learned knowledge only if ALL executions were successful
         if (usedCurlWget && executedSteps.length > 0 && allExecutionsSuccessful) {
           const stepsText = executedSteps.map((s, i) => `${i + 1}. ${s}`).join('\n');
-          await this.saveLearnedKnowledge(prompt, tutorialUrl || 'unknown', stepsText);
+
+          // Ask user for confirmation before saving (unless disabled)
+          const autoSave = process.env.SELF_LEARNING_AUTO_SAVE === 'true';
+
+          if (autoSave) {
+            await this.saveLearnedKnowledge(prompt, tutorialUrl || 'unknown', stepsText);
+          } else {
+            console.log('\n💡 I successfully learned this task!');
+            console.log(`   Tutorial: ${tutorialUrl || 'unknown'}`);
+            console.log(`   Steps executed: ${executedSteps.length}`);
+
+            const { shouldSave } = await inquirer.prompt([{
+              type: 'confirm',
+              name: 'shouldSave',
+              message: 'Save this knowledge for future use?',
+              default: true
+            }]);
+
+            if (shouldSave) {
+              await this.saveLearnedKnowledge(prompt, tutorialUrl || 'unknown', stepsText);
+            } else {
+              console.log('⏭️  Knowledge not saved\n');
+            }
+          }
         } else if (usedCurlWget && executedSteps.length > 0 && !allExecutionsSuccessful) {
           console.log(`⚠️  Learning not saved: Some GUI operations failed\n`);
         }
@@ -945,10 +968,15 @@ Provide your answer based on tool results when available.`;
       // Search for similar learned tasks
       const results = await this.askStoreHandler.searchPrompts(query, 5);
 
+      // Configurable similarity threshold (default 0.8 = 80%)
+      const threshold = parseFloat(
+        process.env.SELF_LEARNING_SIMILARITY_THRESHOLD || '0.8'
+      );
+
       // Filter only learned tasks with high similarity
       const learned = results.find(r =>
         r.metadata?.type === 'learned_task' &&
-        r.similarity > 0.8
+        r.similarity > threshold
       );
 
       return learned || null;

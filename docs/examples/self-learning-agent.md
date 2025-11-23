@@ -622,39 +622,60 @@ export QDRANT_URL=http://localhost:6333
 # Required: Tools + GUI
 export ENABLE_AGENT_TOOLS=true
 export ENABLE_GUI_CONTROL=true
+
+# Self-Learning Configuration (NEU in v3.0.1!)
+export SELF_LEARNING_SIMILARITY_THRESHOLD=0.8  # Default: 0.8 (80% match)
+export SELF_LEARNING_AUTO_SAVE=false           # Default: false (ask confirmation)
 ```
 
-### Limitations
+### Features & Limitations
 
-**Aktuell:**
+**✅ Implementiert (v3.0.1):**
 - ✅ Speichert nur wenn curl/wget + GUI beide verwendet werden
-- ✅ Similarity threshold: 0.8 (80%)
+- ✅ **Success/Failure Tracking** - Nur erfolgreiche Workflows werden gespeichert
+- ✅ **User Confirmation** - Fragt vor dem Speichern (kann mit ENV deaktiviert werden)
+- ✅ **Konfigurierbare Similarity Threshold** - Über Environment Variable
+- ✅ **/learned Command** - Zeigt alle gelernten Tasks
 - ✅ Nur erste gefundene Tutorial-URL wird gespeichert
-- ✅ Keine Unterscheidung zwischen erfolgreichen/fehlgeschlagenen Versuchen
 
-**Potentielle Verbesserungen:**
-- 🔄 Success/failure tracking
+**📝 Noch offen:**
 - 🔄 Multiple tutorial URL tracking
-- 🔄 Step-by-step success rates
-- 🔄 Adaptive similarity thresholds
+- 🔄 Step-by-step success rates per Operation
+- 🔄 /forget command zum Löschen von gelerntem Wissen
+- 🔄 Learning statistics und Analytics
+- 🔄 Team sharing via Global Memory
 - 🔄 Feedback loops (Agent learns what worked best)
 
 ---
 
 ## 🎉 Zusammenfassung - JETZT LIVE!
 
-Mit der **v3.0.0 Implementierung** ist Self-Learning jetzt:
+Mit der **v3.0.1 Implementierung** ist Self-Learning jetzt:
 
 ✅ **Vollständig integriert** in REPL
 ✅ **Automatisch aktiv** wenn Tools + GUI enabled
 ✅ **Persistiert** in Long-term Memory (Qdrant)
 ✅ **Semantic search** findet ähnliche Tasks
 ✅ **Emergent behavior** - kein Training nötig!
+✅ **Success/Failure Tracking** - nur erfolgreiche Workflows
+✅ **User Confirmation** - volle Kontrolle über gespeichertes Wissen
+✅ **Konfigurierbar** - Similarity threshold & Auto-save
+✅ **/learned Command** - Wissen einsehen und durchsuchen
 
 **Das bedeutet:**
 - Agent lernt **automatisch** aus Internet-Tutorials
-- Agent **speichert** gelerntes Wissen
+- Agent **speichert** nur erfolgreiche Workflows
+- Agent **fragt** vor dem Speichern (optional)
 - Agent **wiederverwendet** Wissen bei ähnlichen Tasks
-- **Null Konfiguration** - funktioniert out-of-the-box!
+- User hat **volle Kontrolle** über Knowledge Base
+- **Konfigurierbar** via Environment Variables
+
+**Neue Commands:**
+- `/learned` - Zeige alle gelernten Tasks
+- `/learned <query>` - Suche in gelerntem Wissen
+
+**Neue Environment Variables:**
+- `SELF_LEARNING_SIMILARITY_THRESHOLD` - Similarity threshold (default: 0.8)
+- `SELF_LEARNING_AUTO_SAVE` - Skip confirmation prompt (default: false)
 
 Siehe auch: **[FEATURE_STATUS.md](../../FEATURE_STATUS.md)** für vollständigen Implementierungs-Status.
