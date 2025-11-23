@@ -14,6 +14,9 @@ import { MCPDetector } from './mcp/mcp-detector';
 import { MCPToolExecutor } from './mcp/mcp-client';
 import { GUIController } from './gui/gui-controller';
 import { ImageEditorAutomator } from './gui/app-automators/image-editor-automator';
+import { MasterAgent, globalMasterAgent } from './orchestrator/master-agent';
+import { FrontendAgent, BackendAgent, DevOpsAgent, DesignAgent, GeneralAgent } from './orchestrator/example-agents';
+import { AgentCapability } from './orchestrator/worker-agent';
 
 function readFileSafe(p: string): string | null {
   try {
@@ -38,6 +41,8 @@ export class ReplSession {
   guiController?: GUIController;
   imageAutomator?: ImageEditorAutomator;
   enableGui: boolean = false;
+  masterAgent?: MasterAgent;
+  enableMultiAgent: boolean = false;
 
   constructor(backendName?: string, enableTools?: boolean, enableMcp?: boolean, enableGui?: boolean) {
     this.backendName = backendName;
@@ -182,6 +187,38 @@ export class ReplSession {
     console.log('💡 Agents can now automate Photoshop, GIMP, Paint, Krita, etc.\n');
   }
 
+  /**
+   * Setup Multi-Agent system
+   */
+  async setupMultiAgent(): Promise<void> {
+    // Multi-agent is enabled if tools or GUI is enabled
+    if (!this.enableTools && !this.enableGui) {
+      return;
+    }
+
+    this.enableMultiAgent = true;
+    this.masterAgent = globalMasterAgent;
+
+    console.log('\n🤖 Multi-Agent System enabled\n');
+    console.log('   Starting default worker agents...\n');
+
+    // Spawn default agents
+    const frontendAgent = new FrontendAgent();
+    const backendAgent = new BackendAgent();
+    const devopsAgent = new DevOpsAgent();
+    const designAgent = new DesignAgent();
+    const generalAgent = new GeneralAgent();
+
+    this.masterAgent.spawnAgent(frontendAgent);
+    this.masterAgent.spawnAgent(backendAgent);
+    this.masterAgent.spawnAgent(devopsAgent);
+    this.masterAgent.spawnAgent(designAgent);
+    this.masterAgent.spawnAgent(generalAgent);
+
+    console.log('✅ Multi-Agent system ready with 5 worker agents\n');
+    console.log('💡 Use /agents to manage agents, /task to delegate tasks\n');
+  }
+
   async run(): Promise<void> {
     console.log(`🧠 cacli REPL (backend=${this.backendName || process.env.MODEL_BACKEND || 'mock'})`);
     console.log('Type "/help" for commands, or just start typing to ask questions');
@@ -197,6 +234,9 @@ export class ReplSession {
 
     // Setup GUI control if enabled
     await this.setupGUICapabilities();
+
+    // Setup Multi-Agent system if enabled
+    await this.setupMultiAgent();
 
     while (true) {
       const { cmd } = await inquirer.prompt([
@@ -278,6 +318,14 @@ export class ReplSession {
       await this.cmdLoadKnowledge(arg);
     } else if (verb === 'forget') {
       await this.cmdForget(arg);
+    } else if (verb === 'agents') {
+      await this.cmdAgents(arg);
+    } else if (verb === 'task') {
+      await this.cmdTask(arg);
+    } else if (verb === 'broadcast') {
+      await this.cmdBroadcast(arg);
+    } else if (verb === 'agent-status') {
+      await this.cmdAgentStatus();
     } else if (verb === 'token') {
       await this.cmdToken(arg);
     } else if (verb === 'screenshot' || verb === 'ss' || verb === 'image' || verb === 'img') {
@@ -559,6 +607,12 @@ ${this.toolExecutor ? `     🔧 System Tools: ${toolStatus}
   /clear               Clear screen (alias: /c)
   /help                Show this help (alias: /h)
   /exit                Quit (alias: /quit)
+
+🤖 MULTI-AGENT SYSTEM (when tools/GUI enabled)
+  /agents [list]       Show all active worker agents
+  /task <description>  Delegate task to best available agent
+  /broadcast <message> Send message to all agents
+  /agent-status        Show multi-agent system status
 
 💡 TIPS:
   • Workflows support arguments via $TASK and $1, $2, etc.
@@ -1851,6 +1905,124 @@ ${steps}`;
     } catch (error: any) {
       console.error(`❌ Error deleting learned knowledge: ${error.message}`);
     }
+  }
+
+  /**
+   * Manage agents (list, spawn, kill)
+   */
+  async cmdAgents(arg?: string): Promise<void> {
+    if (!this.masterAgent) {
+      console.log('❌ Multi-Agent system not available');
+      console.log('\n💡 Multi-Agent requires tools or GUI to be enabled');
+      console.log('   Run: cacli --enable-tools or cacli --enable-gui\n');
+      return;
+    }
+
+    const [subcommand, ...rest] = (arg || '').split(' ');
+
+    if (!subcommand || subcommand === 'list') {
+      const agents = this.masterAgent.listAgents();
+
+      if (agents.length === 0) {
+        console.log('\n📋 No agents running\n');
+        return;
+      }
+
+      console.log('\n🤖 Active Agents:\n');
+      agents.forEach((agent, index) => {
+        const statusIcon = {
+          idle: '💤',
+          busy: '⚙️',
+          error: '❌',
+          stopped: '🔴'
+        }[agent.status];
+
+        console.log(`${index + 1}. ${agent.name} (${agent.id})`);
+        console.log(`   Status: ${statusIcon} ${agent.status}`);
+        console.log(`   Capabilities: ${agent.capabilities.join(', ')}`);
+        if (agent.currentTask) {
+          console.log(`   Current Task: ${agent.currentTask}`);
+        }
+        console.log('');
+      });
+    } else {
+      console.log('❌ Unknown subcommand. Use /agents list\n');
+    }
+  }
+
+  /**
+   * Delegate task to agents via Master Agent
+   */
+  async cmdTask(task?: string): Promise<void> {
+    if (!this.masterAgent) {
+      console.log('❌ Multi-Agent system not available');
+      console.log('\n💡 Multi-Agent requires tools or GUI to be enabled');
+      console.log('   Run: cacli --enable-tools or cacli --enable-gui\n');
+      return;
+    }
+
+    if (!task) {
+      console.log('❌ Usage: /task <task description>');
+      console.log('\nExample: /task Create a React component for user login');
+      console.log('         /task Setup FastAPI with PostgreSQL\n');
+      return;
+    }
+
+    const result = await this.masterAgent.executeTask(task);
+
+    if (result.success && result.output) {
+      console.log(`\n📦 Output:\n`);
+      console.log(JSON.stringify(result.output, null, 2));
+      console.log('');
+    }
+  }
+
+  /**
+   * Broadcast message to all agents
+   */
+  async cmdBroadcast(message?: string): Promise<void> {
+    if (!this.masterAgent) {
+      console.log('❌ Multi-Agent system not available');
+      console.log('\n💡 Multi-Agent requires tools or GUI to be enabled');
+      console.log('   Run: cacli --enable-tools or cacli --enable-gui\n');
+      return;
+    }
+
+    if (!message) {
+      console.log('❌ Usage: /broadcast <message>');
+      console.log('\nExample: /broadcast Status check - how are you all doing?\n');
+      return;
+    }
+
+    this.masterAgent.broadcast(message);
+  }
+
+  /**
+   * Show agent system status
+   */
+  async cmdAgentStatus(): Promise<void> {
+    if (!this.masterAgent) {
+      console.log('❌ Multi-Agent system not available');
+      console.log('\n💡 Multi-Agent requires tools or GUI to be enabled');
+      console.log('   Run: cacli --enable-tools or cacli --enable-gui\n');
+      return;
+    }
+
+    const status = this.masterAgent.getStatus();
+
+    console.log('\n📊 Multi-Agent System Status\n');
+    console.log(`🤖 Total Agents: ${status.totalAgents}`);
+    console.log(`   💤 Idle: ${status.idleAgents}`);
+    console.log(`   ⚙️  Busy: ${status.busyAgents}`);
+    console.log('');
+    console.log(`🎯 Available Capabilities:`);
+    status.capabilities.forEach(cap => {
+      console.log(`   - ${cap}`);
+    });
+    console.log('');
+    console.log(`📝 Task History: ${status.taskHistory} tasks completed`);
+    console.log(`📨 Messages: ${status.messageStats.totalMessages} total`);
+    console.log('');
   }
 
   async cmdToken(arg: string): Promise<void> {
