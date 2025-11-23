@@ -149,9 +149,18 @@ configCmd
   .command('backend <name>')
   .description('Auto-configure a specific backend (e.g., gemini, mistral)')
   .option('--api-key <key>', 'API key for the backend')
+  .option('--no-web-search', 'Disable web search (use only LLM knowledge)')
   .action(async (name: string, opts) => {
     try {
-      const configurator = new AutoConfigurator();
+      const useWebSearch = opts.webSearch !== false;
+      const configurator = new AutoConfigurator(undefined, useWebSearch);
+
+      if (useWebSearch) {
+        console.log('🌐 Web search enabled - will fetch live documentation');
+      } else {
+        console.log('📚 Using LLM knowledge only (web search disabled)');
+      }
+
       const success = await configurator.configure(name, opts.apiKey);
       process.exit(success ? 0 : 1);
     } catch (err: any) {

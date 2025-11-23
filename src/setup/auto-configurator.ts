@@ -27,11 +27,13 @@ export interface BackendConfig {
 export class AutoConfigurator {
   private llm: ModelBackend;
   private projectRoot: string;
+  private useWebSearch: boolean;
 
-  constructor(llm?: ModelBackend) {
+  constructor(llm?: ModelBackend, useWebSearch: boolean = true) {
     // Use configured backend or fallback to any available
     this.llm = llm || getBackend();
     this.projectRoot = path.join(__dirname, '../..');
+    this.useWebSearch = useWebSearch;
   }
 
   /**
@@ -100,12 +102,102 @@ export class AutoConfigurator {
   }
 
   /**
-   * Use LLM to research backend API structure
+   * Fetch web documentation for backend API
+   */
+  private async fetchWebDocumentation(backendName: string): Promise<string | null> {
+    if (!this.useWebSearch) {
+      return null;
+    }
+
+    try {
+      console.log(`🌐 Searching web for ${backendName} API documentation...`);
+
+      // Common documentation URL patterns
+      const docUrls = [
+        `https://docs.${backendName}.ai/api-reference`,
+        `https://docs.${backendName}.com/api-reference`,
+        `https://${backendName}.ai/docs/api`,
+        `https://${backendName}.com/docs/api`,
+        `https://api.${backendName}.ai/docs`,
+        `https://developers.${backendName}.com/docs`,
+      ];
+
+      // Try to fetch from common documentation URLs
+      for (const url of docUrls) {
+        try {
+          const response = await axios.get(url, {
+            timeout: 5000,
+            headers: {
+              'User-Agent': 'cacli-auto-configurator/1.0'
+            }
+          });
+
+          if (response.status === 200 && response.data) {
+            console.log(`✅ Found documentation at: ${url}`);
+            return response.data;
+          }
+        } catch {
+          // Try next URL
+          continue;
+        }
+      }
+
+      console.log(`⚠️  Could not fetch web documentation, using LLM knowledge`);
+      return null;
+    } catch (error) {
+      console.log(`⚠️  Web search failed, using LLM knowledge`);
+      return null;
+    }
+  }
+
+  /**
+   * Search GitHub for backend examples
+   */
+  private async searchGitHubExamples(backendName: string): Promise<string | null> {
+    if (!this.useWebSearch) {
+      return null;
+    }
+
+    try {
+      console.log(`🔎 Searching GitHub for ${backendName} examples...`);
+
+      // Search GitHub API
+      const searchQuery = `${backendName} API TypeScript`;
+      const githubUrl = `https://api.github.com/search/code?q=${encodeURIComponent(searchQuery)}+language:typescript`;
+
+      const response = await axios.get(githubUrl, {
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'cacli-auto-configurator/1.0',
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (response.data && response.data.items && response.data.items.length > 0) {
+        const exampleUrls = response.data.items.slice(0, 3).map((item: any) => item.html_url);
+        console.log(`✅ Found ${response.data.items.length} GitHub examples`);
+        return `GitHub examples:\n${exampleUrls.join('\n')}`;
+      }
+
+      return null;
+    } catch (error) {
+      console.log(`⚠️  GitHub search failed`);
+      return null;
+    }
+  }
+
+  /**
+   * Use LLM to research backend API structure (with optional web search)
    */
   private async researchBackend(backendName: string): Promise<BackendConfig | null> {
     console.log(`🔍 Researching ${backendName} API...`);
 
-    const prompt = `You are a software engineer researching AI model APIs.
+    // Step 1: Try to fetch web documentation
+    const webDocs = await this.fetchWebDocumentation(backendName);
+    const githubExamples = await this.searchGitHubExamples(backendName);
+
+    // Step 2: Build enhanced prompt with web data
+    let prompt = `You are a software engineer researching AI model APIs.
 
 Research the ${backendName} API and provide ONLY this information in the following EXACT format:
 
@@ -121,8 +213,20 @@ Examples of backends:
 - Google Gemini: https://generativelanguage.googleapis.com/v1beta
 - Mistral: https://api.mistral.ai/v1
 - Cohere: https://api.cohere.ai/v1
+`;
 
-Be concise and factual. Only provide the format above, no additional explanation.`;
+    // Add web research results if available
+    if (webDocs || githubExamples) {
+      prompt += `\n\nAdditional context from web search:\n`;
+      if (webDocs) {
+        prompt += `\nDocumentation snippet:\n${webDocs.substring(0, 500)}...\n`;
+      }
+      if (githubExamples) {
+        prompt += `\n${githubExamples}\n`;
+      }
+    }
+
+    prompt += `\nBe concise and factual. Only provide the format above, no additional explanation.`;
 
     const response = await this.llm.chat(prompt);
 
@@ -173,14 +277,21 @@ Be concise and factual. Only provide the format above, no additional explanation
   }
 
   /**
-   * Generate backend implementation code
+   * Generate backend implementation code (with optional web examples)
    */
   private async generateBackendCode(backendName: string, config: BackendConfig): Promise<string> {
     console.log(`\n🔨 Generating backend code...`);
 
     const className = backendName.charAt(0).toUpperCase() + backendName.slice(1) + 'Backend';
 
-    const prompt = `Generate TypeScript code for a ${backendName} backend implementation.
+    // Try to fetch code examples from web if enabled
+    let webExample = '';
+    if (this.useWebSearch) {
+      console.log(`🌐 Searching for ${backendName} code examples...`);
+      webExample = await this.fetchCodeExample(backendName);
+    }
+
+    let prompt = `Generate TypeScript code for a ${backendName} backend implementation.
 
 Requirements:
 - Class name: ${className}
@@ -199,8 +310,13 @@ The code must:
 5. ${config.supportsStreaming ? 'Support both streaming and non-streaming' : 'Support non-streaming only'}
 6. Handle errors gracefully
 7. Use proper TypeScript types
+`;
 
-Generate ONLY the TypeScript code, no explanations. Start with imports.`;
+    if (webExample) {
+      prompt += `\n\nReference example (adapt to our structure):\n${webExample}\n`;
+    }
+
+    prompt += `\nGenerate ONLY the TypeScript code, no explanations. Start with imports.`;
 
     const code = await this.llm.chat(prompt);
 
@@ -209,6 +325,38 @@ Generate ONLY the TypeScript code, no explanations. Start with imports.`;
     }
 
     return code;
+  }
+
+  /**
+   * Fetch code example from web (GitHub, docs, etc.)
+   */
+  private async fetchCodeExample(backendName: string): Promise<string> {
+    try {
+      // Try npm package repository (common for official SDKs)
+      const npmPackages = [
+        `@${backendName}/sdk`,
+        `${backendName}-sdk`,
+        `${backendName}`,
+      ];
+
+      for (const pkg of npmPackages) {
+        try {
+          const url = `https://cdn.jsdelivr.net/npm/${pkg}/package.json`;
+          const response = await axios.get(url, { timeout: 3000 });
+
+          if (response.data && response.data.repository) {
+            console.log(`✅ Found official SDK: ${pkg}`);
+            return `Official SDK available at: ${pkg}\nRepository: ${JSON.stringify(response.data.repository)}`;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      return '';
+    } catch {
+      return '';
+    }
   }
 
   /**

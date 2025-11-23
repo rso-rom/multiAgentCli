@@ -6,12 +6,13 @@
 
 ### Wie funktioniert es?
 
-1. **Research**: Ein bereits konfiguriertes Model (z.B. Ollama) recherchiert die API-Struktur des neuen Backends
-2. **Generate**: Das System generiert automatisch den TypeScript-Code
-3. **Configure**: Environment-Variablen werden automatisch gesetzt
-4. **Test**: Die Verbindung wird getestet
+1. **Web-Research** 🌐: System holt aktuelle API-Dokumentation und Code-Beispiele aus dem Internet
+2. **LLM-Analysis**: Ein bereits konfiguriertes Model (z.B. Ollama) analysiert die Informationen
+3. **Generate**: Das System generiert automatisch den TypeScript-Code
+4. **Configure**: Environment-Variablen werden automatisch gesetzt
+5. **Test**: Die Verbindung wird getestet
 
-**Das ist Meta-Programming:** Code, der Code schreibt! 🚀
+**Das ist Meta-Programming mit Live-Internet-Zugriff:** Code, der sich selbst erweitert! 🚀
 
 ---
 
@@ -44,12 +45,27 @@ Mit Auto-Configuration:
 ### Methode 1: Direkter Befehl
 
 ```bash
-# Backend mit API-Key konfigurieren
+# Backend mit API-Key konfigurieren (mit Web-Suche - Standard)
 cacli configure backend gemini --api-key YOUR_API_KEY
 
 # Backend ohne API-Key (wird später gesetzt)
 cacli configure backend mistral
+
+# Ohne Web-Suche (nur LLM-Wissen, z.B. offline)
+cacli configure backend mistral --no-web-search
 ```
+
+**💡 Web-Suche vs. LLM-Wissen:**
+
+| Feature | Mit Web-Suche 🌐 | Ohne Web-Suche 📚 |
+|---------|-----------------|-------------------|
+| **Genauigkeit** | ⭐⭐⭐⭐⭐ Aktuelle APIs | ⭐⭐⭐ Training-Cutoff |
+| **Geschwindigkeit** | ⭐⭐⭐ ~5-10s | ⭐⭐⭐⭐⭐ ~2s |
+| **Internet** | ✅ Erforderlich | ❌ Nicht nötig |
+| **Aktualität** | ✅ Live-Daten | ⚠️  Kann veraltet sein |
+| **Code-Qualität** | ✅ Mit Beispielen | ⚠️  Generisch |
+
+**Empfehlung:** Immer Web-Suche nutzen (Standard), außer bei Offline-Nutzung!
 
 ### Methode 2: Interaktiver Wizard
 
@@ -79,6 +95,10 @@ cacli configure wizard
 ? Enter your gemini API key (optional): ••••••••
 
 🔍 Researching gemini API...
+🌐 Searching web for gemini API documentation...
+✅ Found documentation at: https://docs.gemini.ai/api-reference
+🔎 Searching GitHub for gemini examples...
+✅ Found 847 GitHub examples
 ✅ Research complete!
    API URL: https://generativelanguage.googleapis.com/v1beta
    Auth: api-key
@@ -135,9 +155,43 @@ Usage: cacli configure backend <name>
 
 ## 🔍 Wie funktioniert es technisch?
 
-### Schritt 1: Research Phase
+### Schritt 0: Web-Research (Optional, aber empfohlen)
 
-Das System nutzt ein bereits konfiguriertes LLM (z.B. Ollama mit llama3):
+Das System holt **live** Informationen aus dem Internet:
+
+**1. API-Dokumentation:**
+```typescript
+// Versucht gängige Dokumentations-URLs:
+const docUrls = [
+  `https://docs.${backendName}.ai/api-reference`,
+  `https://docs.${backendName}.com/api-reference`,
+  `https://${backendName}.ai/docs/api`,
+  `https://api.${backendName}.ai/docs`
+];
+
+// Holt aktuelle Doku:
+const response = await axios.get(url);
+```
+
+**2. GitHub-Beispiele:**
+```typescript
+// Sucht TypeScript-Beispiele:
+const githubUrl = `https://api.github.com/search/code?q=${backendName}+API+TypeScript`;
+const examples = await axios.get(githubUrl);
+```
+
+**3. NPM-Packages:**
+```typescript
+// Prüft auf offizielle SDKs:
+const npmUrl = `https://cdn.jsdelivr.net/npm/${backendName}-sdk/package.json`;
+const sdk = await axios.get(npmUrl);
+```
+
+**Vorteil:** Das LLM bekommt **aktuelle** Infos statt veraltetes Training-Wissen!
+
+### Schritt 1: LLM-Analysis
+
+Das System nutzt ein bereits konfiguriertes LLM (z.B. Ollama mit llama3) mit den Web-Daten:
 
 ```typescript
 const prompt = `Research the ${backendName} API and provide:
