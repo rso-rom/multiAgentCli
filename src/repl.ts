@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import fs from 'fs';
 import path from 'path';
-import { getBackend } from './config';
+import { getBackend, getBackendAuto } from './config';
 import { streamToConsole } from './utils/stream';
 import { highlightCode } from './utils/highlight';
 import { runHost, runDocker } from './utils/run';

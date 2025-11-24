@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { ReplSession } from './repl';
 import { getBackendName } from './config';
+import { backendAutoDetector } from './setup/backend-auto-detector';
 import { AnthropicBackend } from './backends/anthropic';
 import { globalTokenStore } from './auth/token-store';
 import { SetupWizard } from './setup/setup-wizard';
@@ -15,18 +16,42 @@ const program = new Command();
 
 program
   .name('cacli')
-  .description('cacli (Coding Assistent CLI): Production-Ready Multi-Agent AI with Real LLM Integration')
-  .version('4.4.1')
+  .description('cacli (Coding Assistent CLI): Self-Configuring Multi-Agent AI with Automatic Backend Detection')
+  .version('4.5.0')
   .option('-b, --backend <name>', 'override backend (ollama|openwebui|openai|claude|anthropic|mock)')
   .option('--disable-tools', 'disable system tools (enabled by default)')
   .option('--enable-mcp', 'enable MCP server integration (VS Code, Obsidian, etc.)')
   .option('--disable-gui', 'disable GUI control (enabled by default)')
-  .action((opts) => {
+  .action(async (opts) => {
     // Default action: start REPL
     // Tools and GUI are enabled by default, unless explicitly disabled
     const enableTools = !opts.disableTools;
     const enableGui = !opts.disableGui;
-    const session = new ReplSession(opts.backend, enableTools, opts.enableMcp, enableGui);
+
+    // Auto-detect backend if not explicitly specified
+    let backendName = opts.backend;
+    if (!backendName && !process.env.MODEL_BACKEND) {
+      const detected = await backendAutoDetector.getBestBackend();
+      backendName = detected.name;
+
+      console.log(`\n🔍 Auto-detected backend: ${detected.name.toUpperCase()}`);
+      console.log(`   ${detected.reason}`);
+      if (detected.model) {
+        console.log(`   Model: ${detected.model}`);
+      }
+
+      if (detected.name === 'mock') {
+        console.log('\n⚠️  No real LLM backends available - using simulation mode');
+        console.log('💡 For real AI execution, install Ollama:');
+        console.log('   1. https://ollama.ai');
+        console.log('   2. ollama serve');
+        console.log('   3. ollama pull llama3\n');
+      } else {
+        console.log('');
+      }
+    }
+
+    const session = new ReplSession(backendName, enableTools, opts.enableMcp, enableGui);
     session.run().catch(err => {
       console.error('Error:', err);
       process.exit(1);
@@ -46,7 +71,15 @@ program
     // Tools and GUI are enabled by default, unless explicitly disabled
     const enableTools = !opts.disableTools;
     const enableGui = !opts.disableGui;
-    const session = new ReplSession(opts.backend, enableTools, opts.enableMcp, enableGui);
+
+    // Auto-detect backend if not explicitly specified
+    let backendName = opts.backend;
+    if (!backendName && !process.env.MODEL_BACKEND) {
+      const detected = await backendAutoDetector.getBestBackend();
+      backendName = detected.name;
+    }
+
+    const session = new ReplSession(backendName, enableTools, opts.enableMcp, enableGui);
     if (session.enableTools) {
       await session.setupToolCapabilities();
     }

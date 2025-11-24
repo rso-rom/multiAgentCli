@@ -1,7 +1,7 @@
 {
   "name": "cacli",
-  "version": "4.4.1",
-  "description": "cacli (Coding Assistent CLI): Production-Ready Multi-Agent AI with Real LLM Integration (Ollama by default), Collaborative Learning & Knowledge Reflection, Intelligent Auto-Routing, System Tools & GUI Control, Master Agent SPOC, Inter-Agent Communication, Dynamic Workflows, and Self-Learning",
+  "version": "4.5.0",
+  "description": "cacli (Coding Assistent CLI): Self-Configuring Multi-Agent AI with Automatic Backend Detection, Real LLM Integration, Collaborative Learning, Intelligent Auto-Routing, System Tools & GUI Control, Master Agent SPOC, Inter-Agent Communication, and Self-Learning",
   "keywords": [
     "ai",
     "cli",

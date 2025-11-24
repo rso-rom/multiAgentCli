@@ -3,11 +3,45 @@ import { OpenWebUIBackend } from './backends/openwebui';
 import { OpenAIBackend } from './backends/vision-openai';
 import { AnthropicBackend } from './backends/anthropic';
 import { MockBackend } from './backends/mock';
+import { backendAutoDetector } from './setup/backend-auto-detector';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 export type BackendName = 'ollama' | 'openwebui' | 'openai' | 'anthropic' | 'claude' | 'mock';
+
+// Cache for auto-detected backend
+let autoDetectedBackend: string | null = null;
+
+/**
+ * Auto-detect and return best available backend
+ */
+export async function getBackendAuto(showDetection: boolean = false) {
+  if (!autoDetectedBackend) {
+    const detected = await backendAutoDetector.getBestBackend();
+    autoDetectedBackend = detected.name;
+
+    if (showDetection) {
+      console.log(`\n🔍 Auto-detected backend: ${detected.name.toUpperCase()}`);
+      console.log(`   ${detected.reason}`);
+      if (detected.model) {
+        console.log(`   Model: ${detected.model}`);
+      }
+
+      if (detected.name === 'mock') {
+        console.log('\n⚠️  No real LLM backends available - using simulation mode');
+        console.log('💡 For real AI execution, install Ollama:');
+        console.log('   1. https://ollama.ai');
+        console.log('   2. ollama serve');
+        console.log('   3. ollama pull llama3\n');
+      } else {
+        console.log('');
+      }
+    }
+  }
+
+  return getBackend(autoDetectedBackend);
+}
 
 export function getBackend(name?: string) {
   const backend = (name || process.env.MODEL_BACKEND || 'ollama').toLowerCase();
