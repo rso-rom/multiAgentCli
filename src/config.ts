@@ -10,7 +10,7 @@ dotenv.config();
 export type BackendName = 'ollama' | 'openwebui' | 'openai' | 'anthropic' | 'claude' | 'mock';
 
 export function getBackend(name?: string) {
-  const backend = (name || process.env.MODEL_BACKEND || 'mock').toLowerCase();
+  const backend = (name || process.env.MODEL_BACKEND || 'ollama').toLowerCase();
 
   if (backend === 'ollama') {
     return new OllamaBackend(
@@ -48,5 +48,5 @@ export function getBackend(name?: string) {
 }
 
 export function getBackendName(name?: string): string {
-  return (name || process.env.MODEL_BACKEND || 'mock').toLowerCase();
+  return (name || process.env.MODEL_BACKEND || 'ollama').toLowerCase();
 }
