@@ -209,14 +209,14 @@ export class ReplSession {
     }
 
     console.log('\n🤖 Multi-Agent System enabled\n');
-    console.log('   Starting default worker agents...\n');
+    console.log('   Starting default worker agents with LLM backend...\n');
 
-    // Spawn default agents
-    const frontendAgent = new FrontendAgent();
-    const backendAgent = new BackendAgent();
-    const devopsAgent = new DevOpsAgent();
-    const designAgent = new DesignAgent();
-    const generalAgent = new GeneralAgent();
+    // Spawn default agents with LLM backend for intelligent reasoning
+    const frontendAgent = new FrontendAgent(this.backend);
+    const backendAgent = new BackendAgent(this.backend);
+    const devopsAgent = new DevOpsAgent(this.backend);
+    const designAgent = new DesignAgent(this.backend);
+    const generalAgent = new GeneralAgent(this.backend);
 
     this.masterAgent.spawnAgent(frontendAgent);
     this.masterAgent.spawnAgent(backendAgent);
@@ -225,13 +225,14 @@ export class ReplSession {
     this.masterAgent.spawnAgent(generalAgent);
 
     console.log('✅ Multi-Agent system ready with 5 worker agents\n');
+    console.log(`🧠 LLM Backend: ${this.backendName || process.env.MODEL_BACKEND || 'mock'}\n`);
     if (this.enableTools) {
       console.log('🛠️  System tools enabled (git, npm, curl, etc.)\n');
     }
     if (this.enableGui) {
       console.log('🎨 GUI control enabled (Photoshop, GIMP, etc.)\n');
     }
-    console.log('💡 Just type your task - auto-routing will handle the rest!\n');
+    console.log('💡 Just type your task - agents will use LLM for intelligent execution!\n');
   }
 
   async run(): Promise<void> {

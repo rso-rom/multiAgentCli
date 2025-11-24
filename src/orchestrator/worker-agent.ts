@@ -50,16 +50,19 @@ export abstract class WorkerAgent {
   protected learning: AgentLearning;
   protected learningCoordinator: LearningCoordinator;
   protected learningEnabled: boolean = true;
+  protected backend: any; // LLM Backend for agent reasoning
 
   constructor(
     name: string,
     capabilities: AgentCapability[],
+    backend?: any,
     messageBus: MessageBus = globalMessageBus,
     learningCoordinator: LearningCoordinator = globalLearningCoordinator
   ) {
     this.id = `agent-${crypto.randomUUID().substring(0, 8)}`;
     this.name = name;
     this.capabilities = capabilities;
+    this.backend = backend;
     this.messageBus = messageBus;
     this.learningCoordinator = learningCoordinator;
 
