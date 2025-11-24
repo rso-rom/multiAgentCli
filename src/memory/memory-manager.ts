@@ -98,6 +98,13 @@ export class MemoryManager {
     return await this.longTerm.search(query, limit);
   }
 
+  async deleteLong(id: string): Promise<void> {
+    if (!this.longTerm) {
+      throw new Error('Qdrant not enabled. Set useQdrant: true in config.');
+    }
+    await this.longTerm.delete(id);
+  }
+
   // ========== Global Memory ==========
 
   async storeGlobal(id: string, text: string, metadata: Record<string, any> = {}): Promise<void> {
@@ -110,6 +117,13 @@ export class MemoryManager {
   async searchGlobal(query: string, limit = 5): Promise<any[]> {
     if (!this.global) return [];
     return await this.global.search(query, limit);
+  }
+
+  async deleteGlobal(id: string): Promise<void> {
+    if (!this.global) {
+      throw new Error('Qdrant not enabled. Set useQdrant: true in config.');
+    }
+    await this.global.delete(id);
   }
 
   // ========== Utility Methods ==========

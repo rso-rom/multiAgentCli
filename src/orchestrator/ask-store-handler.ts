@@ -152,6 +152,78 @@ export class AskStoreHandler {
   }
 
   /**
+   * Delete a prompt by ID
+   */
+  async deletePrompt(id: string): Promise<void> {
+    if (!this.enabled) {
+      throw new Error('Prompt storage is disabled');
+    }
+
+    try {
+      await this.memory.deleteLong(id);
+      console.log(`✅ Prompt deleted: ${id.substring(0, 8)}...`);
+    } catch (error: any) {
+      console.error(`❌ Failed to delete prompt: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Share a prompt to global memory (cross-project)
+   */
+  async shareToGlobal(id: string): Promise<void> {
+    if (!this.enabled) {
+      throw new Error('Prompt storage is disabled');
+    }
+
+    try {
+      // Get the prompt from long-term memory
+      const results = await this.memory.searchLong('', 1000);
+      const prompt = results.find(r => r.id === id);
+
+      if (!prompt) {
+        throw new Error(`Prompt not found: ${id}`);
+      }
+
+      // Store in global memory
+      await this.memory.storeGlobal(id, prompt.text, {
+        ...prompt.metadata,
+        shared_at: new Date().toISOString(),
+        shared_from_project: prompt.metadata.project || 'unknown'
+      });
+
+      console.log(`✅ Shared to global memory: ${id.substring(0, 8)}...`);
+    } catch (error: any) {
+      console.error(`❌ Failed to share to global memory: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Import prompts from global memory
+   */
+  async importFromGlobal(query: string, limit = 10): Promise<Array<{
+    id: string;
+    text: string;
+    similarity: number;
+    metadata: any;
+  }>> {
+    try {
+      const results = await this.memory.searchGlobal(query, limit);
+
+      return results.map(r => ({
+        id: r.id,
+        text: r.text,
+        similarity: r.score,
+        metadata: r.metadata
+      }));
+    } catch (error: any) {
+      console.error(`❌ Failed to import from global memory: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
    * Get current session ID
    */
   getSessionId(): string {

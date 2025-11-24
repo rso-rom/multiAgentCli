@@ -53,6 +53,14 @@ Siehe → **[docs/features/natural-workflows.md](docs/features/natural-workflows
 - Sequentielle & parallele Agenten-Ausführung
 - Kontext-Sharing zwischen Agents
 
+### 🔧 **NEU:** Advanced Agent Capabilities
+- **Tool Use**: Agents nutzen curl, git, npm, etc. (`--enable-tools`)
+- **MCP Integration**: VS Code, Obsidian fernsteuern (`--enable-mcp`)
+- **GUI Control**: Photoshop, GIMP automatisieren (`--enable-gui`)
+- **Self-Learning**: Lernt aus Online-Tutorials und speichert Wissen
+
+Siehe → **[docs/features/advanced-agent-capabilities.md](docs/features/advanced-agent-capabilities.md)** & **[FEATURE_STATUS.md](FEATURE_STATUS.md)**
+
 ### 🧠 4-Level Memory System
 - **Short-term**: Session-basiert (LMDB)
 - **Mid-term**: Persistiert über Sessions (LMDB)
@@ -100,6 +108,8 @@ Siehe → **[docs/features/oauth.md](docs/features/oauth.md)**
 ### Features & Nutzung
 | Guide | Inhalt | Link |
 |-------|--------|------|
+| **Advanced Agents** | Tool Use, MCP, GUI, Self-Learning | [docs/features/advanced-agent-capabilities.md](docs/features/advanced-agent-capabilities.md) |
+| **Feature Status** | Vollständiger Implementierungs-Status | [FEATURE_STATUS.md](FEATURE_STATUS.md) |
 | **Memory System** | 4-Ebenen Memory, Qdrant | [docs/features/memory-system.md](docs/features/memory-system.md) |
 | **OAuth2** | Login-Flows, Token-Management | [docs/features/oauth.md](docs/features/oauth.md) |
 | **Vision/Screenshots** | GPT-4o Vision, Copy & Paste | [docs/features/vision.md](docs/features/vision.md) |
@@ -116,6 +126,11 @@ cacli
 # Mit anderem Backend
 cacli -b ollama
 cacli -b openai
+
+# Mit Advanced Agent Capabilities
+cacli --enable-tools                           # System Tools (curl, git, npm)
+cacli --enable-tools --enable-mcp              # + MCP (VS Code, Obsidian)
+cacli --enable-tools --enable-mcp --enable-gui # + GUI Control (Photoshop, GIMP)
 
 # Für Development:
 npm start repl
@@ -177,6 +192,67 @@ Proceed? (y/n): y
 ✅ Workflow completed! Code in: ./appcoding-example/
 ```
 
+### 🎓 Self-Learning Beispiel (v3.0 - NEW!)
+```bash
+cacli --enable-tools --enable-gui
+
+> Create a watermark in GIMP
+
+Agent:
+Let me learn how to do this from the GIMP documentation...
+
+🔧 Executing 1 system tool(s)...
+[TOOL:curl:https://docs.gimp.org/watermark-tutorial]
+✅ curl executed successfully
+
+🖱️ Executing 4 GUI tool(s)...
+[TOOL:gui:launch_app:gimp]
+[TOOL:gui:create_image:800x600]
+[TOOL:gui:add_text:"© 2025"]
+[TOOL:gui:save_image:/tmp/watermark.png]
+
+💡 I successfully learned this task!
+   Tutorial: https://docs.gimp.org/watermark-tutorial
+   Steps executed: 4
+? Save this knowledge for future use? (Y/n) y
+💡 Knowledge saved for future use!
+
+---
+
+# Zweiter Durchlauf - Agent erinnert sich!
+> Add a watermark to an image in GIMP
+
+💡 I remember learning this before! (94.2% match)
+📅 Learned: 2025-11-23 15:45:30
+📚 Using saved knowledge:
+[Führt sofort aus - 5x schneller!]
+
+# Gelerntes Wissen verwalten (v3.0.2 - NEW!)
+> /learned
+📚 Learned Knowledge
+1. Create a watermark in GIMP
+   📅 Learned: 2025-11-23 15:45:30
+   🔗 Tutorial: https://docs.gimp.org/watermark-tutorial
+   📝 Steps: launch_app, create_image, add_text, save_image
+
+> /stats
+📊 Self-Learning Statistics
+📈 Overview:
+   Total learned tasks: 15
+   Average: 2.3 tasks/week
+🔗 Top Tutorial Sources:
+   1. docs.gimp.org - 8 tasks (53.3%)
+   2. photoshop.com - 5 tasks (33.3%)
+
+> /share watermark
+✅ Successfully shared 1 task(s) to global memory
+💡 Other projects can now import this knowledge with /import
+
+> /export my-knowledge.json
+✅ Successfully exported 15 task(s)
+📁 File: my-knowledge.json
+```
+
 ---
 
 ## 🛠️ Backends
@@ -196,6 +272,10 @@ OLLAMA_MODEL=mistral:7b
 # Memory
 USE_QDRANT=true
 QDRANT_URL=http://localhost:6333
+
+# Self-Learning (optional)
+SELF_LEARNING_SIMILARITY_THRESHOLD=0.8  # Similarity threshold (0.0-1.0)
+SELF_LEARNING_AUTO_SAVE=false           # Skip confirmation prompt
 ```
 
 ---
@@ -233,6 +313,7 @@ caili/
 - ✅ **Slash Commands** - System-Befehle wie in Claude Code
 - ✅ **Markdown Workflows** - `.md` Templates statt `.yml`
 - ✅ **Auto-Detection** - Erkennt Development-Tasks automatisch
+- ✅ **Advanced Agent Capabilities** - Tool Use, MCP, GUI Control, Self-Learning
 - ✅ **npm Package Ready** - Globale Installation mit `npm install -g cacli`
 - ✅ **Dokumentation** - Reorganisiert in docs/setup/ und docs/features/
 
