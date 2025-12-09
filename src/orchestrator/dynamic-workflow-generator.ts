@@ -4,6 +4,8 @@
  * Generates workflows on-the-fly based on requirements analysis
  */
 
+import { BackendSelector } from './backend-selector';
+
 export interface RequirementsAnalysis {
   scope: string;
   components: string[];
@@ -15,20 +17,32 @@ export interface RequirementsAnalysis {
   recommendedTech: string[];
 }
 
+export interface AgentModelConfig {
+  name: string;
+  role: string;
+  backend: string;
+  model: string;
+}
+
 export class DynamicWorkflowGenerator {
   /**
    * Generate a workflow based on requirements analysis
    */
-  static generateFromRequirements(
+  static async generateFromRequirements(
     task: string,
-    requirements: RequirementsAnalysis
-  ): {
+    requirements: RequirementsAnalysis,
+    defaultBackend?: string,
+    defaultModel?: string,
+    interactive: boolean = true
+  ): Promise<{
     name: string;
     description: string;
     agents: string[];
+    agentConfigs: AgentModelConfig[];
     reasoning: string;
-  } {
+  }> {
     const agents: string[] = [];
+    const agentConfigs: AgentModelConfig[] = [];
     const reasons: string[] = [];
 
     // ALWAYS start with Requirements Engineer
@@ -83,6 +97,43 @@ export class DynamicWorkflowGenerator {
     agents.push('documenter');
     reasons.push('Technical Writer always provides documentation');
 
+    // Generate agent configurations with backend/model assignment
+    if (interactive && BackendSelector.hasMultipleBackends()) {
+      // Interactive mode: Ask user for backend selection
+      const agentInfos = agents.map(name => ({
+        name,
+        role: this.getAgentRole(name)
+      }));
+
+      const selections = await BackendSelector.selectForWorkflow(
+        agentInfos,
+        requirements.complexity,
+        false // Don't ask per agent by default
+      );
+
+      // Build agent configs from selections
+      for (const agentName of agents) {
+        const selection = selections.get(agentName);
+        if (selection) {
+          agentConfigs.push({
+            name: agentName,
+            role: this.getAgentRole(agentName),
+            backend: selection.backend,
+            model: selection.model
+          });
+        }
+      }
+
+      // Show summary
+      BackendSelector.showSelectionSummary(selections);
+    } else {
+      // Non-interactive mode: Use automatic selection
+      for (const agentName of agents) {
+        const config = this.getAgentModelConfig(agentName, requirements.complexity, defaultBackend, defaultModel);
+        agentConfigs.push(config);
+      }
+    }
+
     const description = `Auto-generated workflow for: ${task}`;
     const reasoning = reasons.join('\n  - ');
 
@@ -90,8 +141,156 @@ export class DynamicWorkflowGenerator {
       name: `auto-${requirements.complexity}-${Date.now()}`,
       description,
       agents,
+      agentConfigs,
       reasoning: `Workflow composition:\n  - ${reasoning}`
     };
+  }
+
+  /**
+   * Get agent role description
+   */
+  static getAgentRole(agentName: string): string {
+    const roles: Record<string, string> = {
+      requirements: 'Requirements Engineer',
+      architect: 'Software Architect',
+      developer: 'Full-stack Developer',
+      backend: 'Backend Developer',
+      frontend: 'Frontend Developer',
+      database: 'Database Designer',
+      tester: 'Test Engineer',
+      devops: 'DevOps Engineer',
+      documenter: 'Technical Writer'
+    };
+
+    return roles[agentName] || agentName.charAt(0).toUpperCase() + agentName.slice(1);
+  }
+
+  /**
+   * Get backend and model configuration for an agent based on complexity and role
+   */
+  static getAgentModelConfig(
+    agentName: string,
+    complexity: 'simple' | 'moderate' | 'complex',
+    defaultBackend?: string,
+    defaultModel?: string
+  ): AgentModelConfig {
+    // Read from environment or use defaults
+    const envBackend = defaultBackend || process.env.MODEL_BACKEND || 'ollama';
+    const envModel = defaultModel || this.getDefaultModel(envBackend);
+
+    // Assign models based on agent role and complexity
+    const configs: Record<string, AgentModelConfig> = {
+      requirements: {
+        name: 'requirements',
+        role: 'Requirements Engineer',
+        backend: envBackend,
+        model: envModel
+      },
+      architect: {
+        name: 'architect',
+        role: 'Software Architect',
+        backend: complexity === 'complex' ? this.getBestBackend() : envBackend,
+        model: complexity === 'complex' ? this.getBestModel(this.getBestBackend()) : envModel
+      },
+      developer: {
+        name: 'developer',
+        role: 'Full-stack Developer',
+        backend: envBackend,
+        model: envModel
+      },
+      backend: {
+        name: 'backend',
+        role: 'Backend Developer',
+        backend: envBackend,
+        model: envModel
+      },
+      frontend: {
+        name: 'frontend',
+        role: 'Frontend Developer',
+        backend: envBackend,
+        model: envModel
+      },
+      database: {
+        name: 'database',
+        role: 'Database Designer',
+        backend: envBackend,
+        model: envModel
+      },
+      tester: {
+        name: 'tester',
+        role: 'Test Engineer',
+        backend: envBackend,
+        model: envModel
+      },
+      devops: {
+        name: 'devops',
+        role: 'DevOps Engineer',
+        backend: envBackend,
+        model: envModel
+      },
+      documenter: {
+        name: 'documenter',
+        role: 'Technical Writer',
+        backend: envBackend,
+        model: envModel
+      }
+    };
+
+    return configs[agentName] || {
+      name: agentName,
+      role: agentName.charAt(0).toUpperCase() + agentName.slice(1),
+      backend: envBackend,
+      model: envModel
+    };
+  }
+
+  /**
+   * Get default model for a backend
+   */
+  private static getDefaultModel(backend: string): string {
+    const defaults: Record<string, string> = {
+      ollama: process.env.OLLAMA_MODEL || 'llama3',
+      openai: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      claude: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+      anthropic: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+      openwebui: process.env.OPENWEBUI_MODEL || 'llama3',
+      mock: 'mock'
+    };
+
+    return defaults[backend] || 'llama3';
+  }
+
+  /**
+   * Get best available backend (checks what's configured)
+   */
+  private static getBestBackend(): string {
+    // Priority: Claude > OpenAI > Ollama > Mock
+    if (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_USE_OAUTH === 'true') {
+      return 'claude';
+    }
+    if (process.env.OPENAI_API_KEY) {
+      return 'openai';
+    }
+    if (process.env.OLLAMA_URL) {
+      return 'ollama';
+    }
+    return process.env.MODEL_BACKEND || 'ollama';
+  }
+
+  /**
+   * Get best model for a backend
+   */
+  private static getBestModel(backend: string): string {
+    const bestModels: Record<string, string> = {
+      claude: 'claude-3-5-sonnet-20241022',
+      anthropic: 'claude-3-5-sonnet-20241022',
+      openai: 'gpt-4o',
+      ollama: 'llama3',
+      openwebui: 'llama3',
+      mock: 'mock'
+    };
+
+    return bestModels[backend] || this.getDefaultModel(backend);
   }
 
   /**

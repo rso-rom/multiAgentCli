@@ -1,15 +1,50 @@
 import { OllamaBackend } from './backends/ollama';
 import { OpenWebUIBackend } from './backends/openwebui';
 import { OpenAIBackend } from './backends/vision-openai';
+import { AnthropicBackend } from './backends/anthropic';
 import { MockBackend } from './backends/mock';
+import { backendAutoDetector } from './setup/backend-auto-detector';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-export type BackendName = 'ollama' | 'openwebui' | 'openai' | 'mock';
+export type BackendName = 'ollama' | 'openwebui' | 'openai' | 'anthropic' | 'claude' | 'mock';
+
+// Cache for auto-detected backend
+let autoDetectedBackend: string | null = null;
+
+/**
+ * Auto-detect and return best available backend
+ */
+export async function getBackendAuto(showDetection: boolean = false) {
+  if (!autoDetectedBackend) {
+    const detected = await backendAutoDetector.getBestBackend();
+    autoDetectedBackend = detected.name;
+
+    if (showDetection) {
+      console.log(`\n🔍 Auto-detected backend: ${detected.name.toUpperCase()}`);
+      console.log(`   ${detected.reason}`);
+      if (detected.model) {
+        console.log(`   Model: ${detected.model}`);
+      }
+
+      if (detected.name === 'mock') {
+        console.log('\n⚠️  No real LLM backends available - using simulation mode');
+        console.log('💡 For real AI execution, install Ollama:');
+        console.log('   1. https://ollama.ai');
+        console.log('   2. ollama serve');
+        console.log('   3. ollama pull llama3\n');
+      } else {
+        console.log('');
+      }
+    }
+  }
+
+  return getBackend(autoDetectedBackend);
+}
 
 export function getBackend(name?: string) {
-  const backend = (name || process.env.MODEL_BACKEND || 'mock').toLowerCase();
+  const backend = (name || process.env.MODEL_BACKEND || 'ollama').toLowerCase();
 
   if (backend === 'ollama') {
     return new OllamaBackend(
@@ -20,7 +55,9 @@ export function getBackend(name?: string) {
 
   if (backend === 'openwebui') {
     return new OpenWebUIBackend(
-      process.env.OPENWEBUI_URL || 'http://localhost:3000/api/v1/generate'
+      process.env.OPENWEBUI_URL || 'http://localhost:3000/api/v1/chat/completions',
+      process.env.OPENWEBUI_API_KEY,
+      process.env.OPENWEBUI_MODEL || 'llama3'
     );
   }
 
@@ -31,9 +68,19 @@ export function getBackend(name?: string) {
     );
   }
 
+  if (backend === 'anthropic' || backend === 'claude') {
+    // Check if we should use OAuth or API key
+    const useOAuth = process.env.ANTHROPIC_USE_OAUTH === 'true';
+    return new AnthropicBackend(
+      process.env.ANTHROPIC_API_KEY,
+      process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+      useOAuth
+    );
+  }
+
   return new MockBackend();
 }
 
 export function getBackendName(name?: string): string {
-  return (name || process.env.MODEL_BACKEND || 'mock').toLowerCase();
+  return (name || process.env.MODEL_BACKEND || 'ollama').toLowerCase();
 }
