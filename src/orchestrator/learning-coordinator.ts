@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { AgentRegistry, globalAgentRegistry } from './agent-registry';
 import { MemoryManager } from '../memory/memory-manager';
 import { AgentLearning, LearningExperience } from './agent-learning';
@@ -40,6 +41,19 @@ export class LearningCoordinator {
     this.messageBus = messageBus;
     this.reflector = new KnowledgeReflector(memory);
     this.memory = memory;
+  }
+
+  /**
+   * Attach a memory manager after construction and propagate it to all
+   * already-registered agents. Needed because the global coordinator is
+   * created at import time, before Qdrant/memory is initialized.
+   */
+  setMemory(memory: MemoryManager): void {
+    this.memory = memory;
+    this.reflector = new KnowledgeReflector(memory);
+    for (const learning of this.agentLearning.values()) {
+      learning.setMemory(memory);
+    }
   }
 
   /**

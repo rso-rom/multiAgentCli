@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { MemoryManager } from '../memory/memory-manager';
 import { AgentCapability } from './worker-agent';
 
@@ -34,6 +35,9 @@ export class AgentLearning {
   private memory?: MemoryManager;
   private localExperiences: LearningExperience[] = [];
   private maxLocalExperiences = 100;
+  // Sharing to global (team) memory is opt-in: task texts may contain
+  // sensitive data, so it must never happen without explicit consent.
+  private shareGlobally: boolean;
 
   constructor(
     agentId: string,
@@ -44,6 +48,14 @@ export class AgentLearning {
     this.agentId = agentId;
     this.agentName = agentName;
     this.agentType = agentType;
+    this.memory = memory;
+    this.shareGlobally = process.env.SHARE_LEARNING_GLOBAL === 'true';
+  }
+
+  /**
+   * Attach a memory manager after construction (e.g. once Qdrant is ready)
+   */
+  setMemory(memory: MemoryManager): void {
     this.memory = memory;
   }
 
@@ -99,20 +111,23 @@ export class AgentLearning {
           }
         );
 
-        // Also store in global memory for cross-agent learning
-        await this.memory.storeGlobal(
-          experience.id,
-          this.formatExperienceForStorage(experience),
-          {
-            agent_id: this.agentId,
-            agent_name: this.agentName,
-            agent_type: this.agentType.join(','),
-            task_type: experience.metadata.taskType,
-            success: success,
-            shared_at: new Date().toISOString(),
-            shared_from_project: process.env.PROJECT_NAME || 'default'
-          }
-        );
+        // Share to global (team) memory only when explicitly enabled
+        // (SHARE_LEARNING_GLOBAL=true) — task texts may contain sensitive data.
+        if (this.shareGlobally) {
+          await this.memory.storeGlobal(
+            experience.id,
+            this.formatExperienceForStorage(experience),
+            {
+              agent_id: this.agentId,
+              agent_name: this.agentName,
+              agent_type: this.agentType.join(','),
+              task_type: experience.metadata.taskType,
+              success: success,
+              shared_at: new Date().toISOString(),
+              shared_from_project: process.env.PROJECT_NAME || 'default'
+            }
+          );
+        }
       } catch (err) {
         // Memory storage is optional, continue without it
         console.warn(`⚠️ Could not store experience in memory: ${err}`);

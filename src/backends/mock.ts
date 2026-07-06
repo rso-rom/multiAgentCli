@@ -1,7 +1,7 @@
 import { ModelBackend, StreamCallback } from './base';
 
 export class MockBackend extends ModelBackend {
-  async chat(prompt: string, onStream?: StreamCallback): Promise<string | void> {
+  async chat(prompt: string, onStream?: StreamCallback, systemPrompt?: string): Promise<string | void> {
     const resp = `\`\`\`python
 # Mock improved file
 print("Hello from Mock")

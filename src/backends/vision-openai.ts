@@ -35,13 +35,19 @@ export class OpenAIBackend extends ModelBackend {
   /**
    * Standard chat interface (text-only)
    */
-  async chat(prompt: string, onStream?: StreamCallback): Promise<string | void> {
+  async chat(prompt: string, onStream?: StreamCallback, systemPrompt?: string): Promise<string | void> {
+    const messages: Array<{ role: string; content: string }> = [];
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+    messages.push({ role: 'user', content: prompt });
+
     try {
       const response = await axios.post(
         this.baseUrl,
         {
           model: this.model,
-          messages: [{ role: 'user', content: prompt }],
+          messages,
           stream: !!onStream,
         },
         {

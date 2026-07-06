@@ -161,32 +161,31 @@ export abstract class WorkerAgent {
         output: result,
         duration
       });
-
-      this.status = AgentStatus.IDLE;
-      this.currentTask = null;
     } catch (error: any) {
-      // Record failed experience
+      // Record failed experience (must not mask the original error)
       if (this.learningEnabled) {
-        await this.learning.recordExperience(
-          message.payload.task,
-          false, // failed
-          undefined,
-          error.message,
-          undefined,
-          message.payload.context
-        );
+        try {
+          await this.learning.recordExperience(
+            message.payload.task,
+            false, // failed
+            undefined,
+            error.message,
+            undefined,
+            message.payload.context
+          );
+        } catch {
+          // Learning storage failure should not prevent the error response
+        }
       }
 
-      this.status = AgentStatus.ERROR;
       this.messageBus.respond(message, this.id, {
         success: false,
         error: error.message
       });
-
-      setTimeout(() => {
-        this.status = AgentStatus.IDLE;
-        this.currentTask = null;
-      }, 1000);
+    } finally {
+      // Always release the agent so it can accept the next task
+      this.status = AgentStatus.IDLE;
+      this.currentTask = null;
     }
   }
 

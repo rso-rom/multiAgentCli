@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import fs from 'fs';
 import path from 'path';
-import { getBackend, getBackendAuto } from './config';
+import { getBackend } from './config';
 import { streamToConsole } from './utils/stream';
 import { highlightCode } from './utils/highlight';
 import { runHost, runDocker } from './utils/run';
@@ -64,6 +64,10 @@ export class ReplSession {
       const memory = await createMemoryManager();
       const { createAskStoreHandler } = await import('./orchestrator/ask-store-handler');
       this.askStoreHandler = await createAskStoreHandler(memory);
+
+      // Wire memory into the learning system so agent experiences persist
+      // and /knowledge queries return results (requires Qdrant)
+      globalLearningCoordinator.setMemory(memory);
     } catch (error) {
       // Ask-store is optional, continue without it
       console.warn('⚠️ Ask-store not available (requires Qdrant)');
@@ -267,13 +271,9 @@ export class ReplSession {
         if (trimmed.startsWith('/')) {
           await this.handleSlashCommand(trimmed.slice(1));
         } else {
-          // Check if this looks like a development task
-          if (await this.looksLikeDevelopmentTask(trimmed)) {
-            await this.handleAutoWorkflow(trimmed);
-          } else {
-            // Natural language → auto ask
-            await this.ask(trimmed);
-          }
+          // Natural language → ask() decides via TaskDetector:
+          // complex task → workflow, task → agent delegation, question → LLM
+          await this.ask(trimmed);
         }
       } catch (e: any) {
         console.error('Error:', e?.message || e);
@@ -378,29 +378,6 @@ export class ReplSession {
   private findWorkflowByName(name: string): string | null {
     const { MarkdownWorkflowParser } = require('./orchestrator/markdown-workflow-parser');
     return MarkdownWorkflowParser.findWorkflow(name);
-  }
-
-  /**
-   * Check if input looks like a development task
-   */
-  private async looksLikeDevelopmentTask(input: string): Promise<boolean> {
-    const devKeywords = [
-      'entwickle', 'erstelle', 'baue', 'implementiere',
-      'develop', 'create', 'build', 'implement', 'make',
-      'app', 'application', 'website', 'api', 'service',
-      'calculator', 'rechner', 'webshop', 'blog', 'cms'
-    ];
-
-    const lowerInput = input.toLowerCase();
-
-    // Check if starts with development verb
-    for (const keyword of devKeywords) {
-      if (lowerInput.startsWith(keyword) || lowerInput.includes(keyword)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   /**
@@ -775,11 +752,19 @@ Return the full file in a code block.`;
       const detection = globalTaskDetector.detect(prompt);
 
       if (detection.isTask && detection.confidence >= 0.6) {
-        // This looks like a task - delegate to Master Agent automatically!
-        console.log(`\n🎯 Task detected (${(detection.confidence * 100).toFixed(0)}% confidence)`);
+        console.log(`\n🎯 Task detected (${(detection.confidence * 100).toFixed(0)}% confidence, complexity: ${detection.complexity})`);
         if (detection.reasoning) {
           console.log(`   Reason: ${detection.reasoning}`);
         }
+
+        // Complex development tasks → full workflow with requirements engineering
+        if (detection.complexity === 'complex') {
+          console.log(`   Routing to Dynamic Workflow (requirements → multi-step plan)...\n`);
+          await this.handleAutoWorkflow(prompt);
+          return;
+        }
+
+        // Regular tasks → delegate to Master Agent
         console.log(`   Routing to Multi-Agent System...\n`);
 
         const result = await this.masterAgent.executeTask(prompt);

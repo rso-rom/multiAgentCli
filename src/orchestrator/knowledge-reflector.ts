@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { LearningExperience } from './agent-learning';
 import { MemoryManager } from '../memory/memory-manager';
 

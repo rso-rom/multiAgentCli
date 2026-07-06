@@ -21,8 +21,11 @@ export class OllamaBackend extends ModelBackend {
     return this.visionModels.some(vm => this.model.toLowerCase().includes(vm));
   }
 
-  async chat(prompt: string, onStream?: StreamCallback): Promise<string | void> {
-    const inst = { model: this.model, prompt };
+  async chat(prompt: string, onStream?: StreamCallback, systemPrompt?: string): Promise<string | void> {
+    const inst: any = { model: this.model, prompt };
+    if (systemPrompt) {
+      inst.system = systemPrompt;
+    }
 
     try {
       const resp = await axios.post(`${this.url}/api/generate`, inst, {

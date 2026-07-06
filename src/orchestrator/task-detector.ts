@@ -12,21 +12,33 @@ export interface TaskDetectionResult {
 }
 
 export class TaskDetector {
-  // Action verbs that indicate tasks
+  // Action verbs that indicate tasks (English + German)
   private taskVerbs = [
     'create', 'build', 'make', 'generate', 'implement', 'develop',
     'setup', 'configure', 'install', 'deploy', 'write', 'code',
     'design', 'architect', 'refactor', 'optimize', 'fix', 'debug',
     'add', 'remove', 'update', 'modify', 'change', 'improve',
     'test', 'validate', 'check', 'analyze', 'review', 'audit',
-    'migrate', 'convert', 'transform', 'integrate', 'connect'
+    'migrate', 'convert', 'transform', 'integrate', 'connect',
+    // German
+    'erstelle', 'erstellen', 'baue', 'bauen', 'mache', 'generiere',
+    'implementiere', 'entwickle', 'entwickeln', 'schreibe', 'schreiben',
+    'installiere', 'konfiguriere', 'deploye', 'programmiere',
+    'behebe', 'korrigiere', 'verbessere', 'optimiere', 'refaktoriere',
+    'füge', 'entferne', 'aktualisiere', 'ändere', 'ergänze',
+    'teste', 'prüfe', 'analysiere', 'migriere', 'erzeuge', 'richte'
   ];
 
-  // Question words that indicate queries (not tasks)
+  // Question words that indicate queries (not tasks) (English + German)
   private questionWords = [
     'what', 'why', 'how', 'when', 'where', 'who', 'which',
     'explain', 'describe', 'tell', 'show', 'is', 'are', 'does', 'can',
-    'should', 'would', 'could', 'will', 'difference', 'meaning'
+    'should', 'would', 'could', 'will', 'difference', 'meaning',
+    // German
+    'was', 'warum', 'wieso', 'weshalb', 'wie', 'wann', 'wo', 'wer',
+    'welche', 'welcher', 'welches', 'erkläre', 'erklär', 'beschreibe',
+    'zeige', 'ist', 'sind', 'kann', 'kannst', 'gibt', 'hat', 'haben',
+    'sollte', 'würde', 'unterschied', 'bedeutung'
   ];
 
   // Technology keywords that suggest technical tasks
@@ -93,9 +105,9 @@ export class TaskDetector {
     }
 
     // Check for "with" or "using" (often indicates technical task)
-    if (inputLower.includes(' with ') || inputLower.includes(' using ')) {
+    if (inputLower.includes(' with ') || inputLower.includes(' using ') || inputLower.includes(' mit ')) {
       confidence += 0.15;
-      reasons.push('Contains "with/using"');
+      reasons.push('Contains "with/using/mit"');
     }
 
     // Normalize confidence to 0-1 range

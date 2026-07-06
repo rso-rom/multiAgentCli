@@ -6,7 +6,7 @@ export type StreamCallback = (chunk: string) => void;
  * Base interface for all model backends
  */
 export abstract class ModelBackend {
-  abstract chat(prompt: string, onStream?: StreamCallback): Promise<string | void>;
+  abstract chat(prompt: string, onStream?: StreamCallback, systemPrompt?: string): Promise<string | void>;
 
   /**
    * Optional: Vision/Image analysis support

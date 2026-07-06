@@ -17,7 +17,7 @@ const program = new Command();
 program
   .name('cacli')
   .description('cacli (Coding Assistent CLI): Self-Configuring Multi-Agent AI with Automatic Backend Detection')
-  .version('4.5.0')
+  .version('4.5.1')
   .option('-b, --backend <name>', 'override backend (ollama|openwebui|openai|claude|anthropic|mock)')
   .option('--disable-tools', 'disable system tools (enabled by default)')
   .option('--enable-mcp', 'enable MCP server integration (VS Code, Obsidian, etc.)')
@@ -66,8 +66,11 @@ program
   .option('--disable-tools', 'disable system tools (enabled by default)')
   .option('--enable-mcp', 'enable MCP server integration')
   .option('--disable-gui', 'disable GUI control (enabled by default)')
-  .action(async (promptParts: string[], opts) => {
+  .action(async (promptParts: string[], _opts, cmd) => {
     const prompt = promptParts.join(' ');
+    // Options like --disable-tools may be captured by the root command
+    // (same names are defined there), so merge global options in.
+    const opts = cmd.optsWithGlobals();
     // Tools and GUI are enabled by default, unless explicitly disabled
     const enableTools = !opts.disableTools;
     const enableGui = !opts.disableGui;

@@ -13,11 +13,17 @@ export class OpenWebUIBackend extends ModelBackend {
     this.model = model;
   }
 
-  async chat(prompt: string, onStream?: StreamCallback): Promise<string | void> {
+  async chat(prompt: string, onStream?: StreamCallback, systemPrompt?: string): Promise<string | void> {
     // OpenWebUI verwendet das OpenAI-kompatible Chat-Format
+    const messages: Array<{ role: string; content: string }> = [];
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+    messages.push({ role: 'user', content: prompt });
+
     const payload = {
       model: this.model,
-      messages: [{ role: 'user', content: prompt }],
+      messages,
       stream: true
     };
 

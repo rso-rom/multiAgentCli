@@ -60,16 +60,19 @@ export class AnthropicBackend extends ModelBackend {
     }
   }
 
-  async chat(prompt: string, onStream?: StreamCallback): Promise<string | void> {
+  async chat(prompt: string, onStream?: StreamCallback, systemPrompt?: string): Promise<string | void> {
     try {
       const accessToken = await this.getAccessToken();
 
-      const payload = {
+      const payload: any = {
         model: this.model,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 4096,
         stream: !!onStream
       };
+      if (systemPrompt) {
+        payload.system = systemPrompt;
+      }
 
       const response = await axios.post(
         this.baseUrl,
