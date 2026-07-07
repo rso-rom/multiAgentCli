@@ -177,9 +177,8 @@ export class AskStoreHandler {
     }
 
     try {
-      // Get the prompt from long-term memory
-      const results = await this.memory.searchLong('', 1000);
-      const prompt = results.find(r => r.id === id);
+      // Get the prompt from long-term memory via direct ID lookup
+      const prompt = await this.memory.getLong(id);
 
       if (!prompt) {
         throw new Error(`Prompt not found: ${id}`);

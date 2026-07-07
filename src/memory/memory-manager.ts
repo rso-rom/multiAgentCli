@@ -98,6 +98,11 @@ export class MemoryManager {
     return await this.longTerm.search(query, limit);
   }
 
+  async getLong(id: string): Promise<{ text: string; metadata: any } | null> {
+    if (!this.longTerm) return null;
+    return await this.longTerm.get(id);
+  }
+
   async deleteLong(id: string): Promise<void> {
     if (!this.longTerm) {
       throw new Error('Qdrant not enabled. Set useQdrant: true in config.');

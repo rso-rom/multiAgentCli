@@ -1,6 +1,6 @@
 {
   "name": "cacli",
-  "version": "4.5.1",
+  "version": "4.5.2",
   "description": "cacli (Coding Assistent CLI): Self-Configuring Multi-Agent AI with Automatic Backend Detection, Real LLM Integration, Collaborative Learning, Intelligent Auto-Routing, System Tools & GUI Control, Master Agent SPOC, Inter-Agent Communication, and Self-Learning",
   "keywords": [
     "ai",
