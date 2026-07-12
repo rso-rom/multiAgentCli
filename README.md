@@ -1,6 +1,6 @@
 # cacli - Coding Assistent CLI
 
-> Multi-Agent AI Orchestration mit TypeScript - Dynamic Workflow Generation, Requirements Engineer & Natural Language Interface
+> Selbstkonfigurierendes Multi-Agent AI System mit TypeScript — Master Agent SPOC, Intelligentes Auto-Routing (DE/EN), Collaborative Learning & Knowledge Reflection, echte LLM-Integration und Natural Language Interface
 
 ## 🚀 Quick Start
 
@@ -9,7 +9,7 @@
 git clone https://github.com/rso-rom/multiAgentCli.git
 cd multiAgentCli
 npm install
-npm run build
+npm start
 ```
 
 **Oder global installieren:**
@@ -18,48 +18,84 @@ npm install -g cacli
 cacli   # Startet direkt die REPL
 ```
 
-Dann siehe → **[QUICK-START.md](QUICK-START.md)** für Backend-Wahl & erste Schritte
+Das war's! cacli erkennt automatisch verfügbare LLM-Backends (Ollama, OpenWebUI, OpenAI, Claude) und startet das Multi-Agent-System mit 5 Worker Agents. Einfach Aufgabe eintippen:
+
+```
+> Erstelle eine React Login-Komponente
+
+🎯 Task detected (75% confidence, complexity: simple)
+   Routing to Multi-Agent System...
+🤖 Delegating to: Frontend Agent
+✅ Task completed successfully!
+```
+
+Details → **[QUICK-START.md](QUICK-START.md)**
 
 ---
 
 ## 📊 Projekt-Status
 
-📦 **Version**: 3.0.0
-📝 **Code**: ~5,000+ Zeilen TypeScript
-✅ **Features**: Dynamic Workflows, Requirements Engineering, Natural Language Interface
+📦 **Version**: 4.5.2
+📝 **Code**: ~8,000+ Zeilen TypeScript
+✅ **Tests**: 111 Tests (Orchestrator-Kern, Backends, Auth, Utils)
 🚀 **Repository**: [github.com/rso-rom/multiAgentCli](https://github.com/rso-rom/multiAgentCli)
 
 ---
 
 ## 🎯 Haupt-Features
 
-### 🚀 **NEU in v3.0:** Dynamic Workflow Generation
-- Workflows werden automatisch basierend auf Anforderungsanalyse generiert
-- **Requirements Engineer** als erster Agent in allen Workflows
-- Intelligente Agenten-Auswahl basierend auf Task-Komplexität
-- Markdown-basierte Workflow-Templates (.md statt .yml)
+### 🤖 **v4.0:** Multi-Agent Orchestration mit Master Agent (SPOC)
+- **Master Agent** als Single Point of Contact — orchestriert alle Worker Agents
+- **5 spezialisierte Worker Agents**: Frontend, Backend, DevOps, Design, General
+- **Message Bus**: Echtzeit-Kommunikation zwischen Agents (Pub/Sub, Request/Response mit Correlation-IDs)
+- **Agent Registry**: Lifecycle-Management (spawn, kill, status)
+- **Task Delegator**: Capability-basiertes Routing zum besten verfügbaren Agent
 
-Siehe → **[docs/features/natural-workflows.md](docs/features/natural-workflows.md)**
+### 🎯 **v4.1:** Intelligentes Auto-Routing (Deutsch + Englisch)
+- Einfach Aufgabe oder Frage eintippen — **keine Befehle nötig**
+- TaskDetector klassifiziert Eingaben mit Confidence-Score:
+  - **Frage** ("Was ist eine App?") → normales LLM
+  - **Task** ("Erstelle eine React Komponente") → Multi-Agent-System
+  - **Komplexer Task** ("Baue mir einen Webshop mit React, Postgres und Docker") → Dynamic Workflow mit Requirements Engineering
+- Erkennt deutsche und englische Action-Verben, Fragewörter und Tech-Keywords
 
-### 💬 **NEU in v3.0:** Natural Language Interface
-- Direkte Prompts ohne `/ask` Befehl
-- Slash Commands für System-Operationen (wie Claude Code)
-- Auto-Detection von Development-Tasks
-- Workflow-Bestätigung mit Auto-Generierung
+### 🧠 **v4.3:** Collaborative Learning & Knowledge Reflection
+- Agents lernen automatisch aus jedem Task (Erfolg/Fehler, Dauer, Technologien)
+- **Knowledge Reflector** erkennt Patterns: "Docker-Tasks scheitern zu 65%", "React + TypeScript werden oft kombiniert"
+- Reflection-Sessions mit Insights & Recommendations (`/reflect`, auch automatisch per `/auto-reflect`)
+- Kollektive Wissensabfrage über alle Agents (`/knowledge <query>`)
+- Persistente Speicherung in Qdrant, Team-Sharing **opt-in** (`SHARE_LEARNING_GLOBAL=true`)
 
-### 🤖 Multi-Agent Orchestration
-- YAML & Markdown-basierte Workflows
-- Mehrere LLM-Backends (Ollama, OpenAI, Custom APIs)
-- Sequentielle & parallele Agenten-Ausführung
-- Kontext-Sharing zwischen Agents
+### ⚡ **v4.4:** Echte LLM-Integration in allen Agents
+- Jeder Worker Agent nutzt das konfigurierte LLM mit **spezialisiertem System-Prompt**
+  (Frontend Agent: React/Vue/TypeScript-Experte, DevOps Agent: Docker/K8s/CI-CD-Experte, ...)
+- Streaming-Support, strukturierte JSON-Antworten
+- Graceful Fallback in Simulation-Mode ohne Backend
 
-### 🔧 **NEU:** Advanced Agent Capabilities
-- **Tool Use**: Agents nutzen curl, git, npm, etc. (`--enable-tools`)
-- **MCP Integration**: VS Code, Obsidian fernsteuern (`--enable-mcp`)
-- **GUI Control**: Photoshop, GIMP automatisieren (`--enable-gui`)
+### 🔍 **v4.5:** Selbstkonfigurierende Backend-Erkennung
+- Erkennt beim Start automatisch, was verfügbar ist (Reihenfolge):
+  1. Explizite Config (`MODEL_BACKEND` / `-b` Flag)
+  2. **Ollama** (localhost:11434, inkl. Model-Auswahl)
+  3. **OpenWebUI** (localhost:3000)
+  4. **OpenAI** (API Key vorhanden?)
+  5. **Claude/Anthropic** (API Key vorhanden?)
+  6. Mock (Simulation) — mit Setup-Anleitung
+- **Null Konfiguration nötig** — `npm start` genügt
+
+### 🔧 Advanced Agent Capabilities (standardmäßig aktiv)
+- **Tool Use**: Agents nutzen curl, git, npm, docker etc. (deaktivierbar: `--disable-tools`)
+- **GUI Control**: Photoshop, GIMP, Krita automatisieren (deaktivierbar: `--disable-gui`)
+- **MCP Integration**: VS Code, Obsidian fernsteuern (optional: `--enable-mcp`)
 - **Self-Learning**: Lernt aus Online-Tutorials und speichert Wissen
 
 Siehe → **[docs/features/advanced-agent-capabilities.md](docs/features/advanced-agent-capabilities.md)** & **[FEATURE_STATUS.md](FEATURE_STATUS.md)**
+
+### 🚀 Dynamic Workflow Generation (v3.0)
+- Workflows werden automatisch basierend auf Anforderungsanalyse generiert
+- **Requirements Engineer** als erster Agent in allen Workflows
+- Markdown-basierte Workflow-Templates (.md statt .yml)
+
+Siehe → **[docs/features/natural-workflows.md](docs/features/natural-workflows.md)**
 
 ### 🧠 4-Level Memory System
 - **Short-term**: Session-basiert (LMDB)
@@ -70,28 +106,16 @@ Siehe → **[docs/features/advanced-agent-capabilities.md](docs/features/advance
 Siehe → **[docs/features/memory-system.md](docs/features/memory-system.md)**
 
 ### 🔐 OAuth2 & Token Management
-- Browser-basierter Login Flow
-- Persistente Token-Speicherung (verschlüsselt)
+- Browser-basierter Login Flow, persistente Token-Speicherung (verschlüsselt)
 - Automatische Token-Erneuerung
-- Unterstützung: Google, GitHub, Custom
 
 Siehe → **[docs/features/oauth.md](docs/features/oauth.md)**
 
-### 🌐 Web Agent System
-- Autonome Internet-Recherche
-- DuckDuckGo Integration
-- Tool-Calling Loop
-
-### 🔧 Tool Awareness
-- Automatische CLI-Tool-Erkennung
-- Runtime Availability Checking
-- Auto-Installation System
-
-### 📈 Performance & Monitoring
-- Token Usage Tracking
-- Cost Calculator
-- Real-time Web Dashboard
-- Workflow Visualization
+### 🌐 Weitere Features
+- **Web Agent**: Autonome Internet-Recherche (DuckDuckGo)
+- **Vision**: Screenshot-/Bild-Analyse (GPT-4o)
+- **Tool Awareness**: Automatische CLI-Tool-Erkennung
+- **Monitoring**: Token Usage Tracking, Cost Calculator, Web Dashboard
 
 ---
 
@@ -120,38 +144,63 @@ Siehe → **[docs/features/oauth.md](docs/features/oauth.md)**
 
 ### Interactive REPL
 ```bash
-# Einfach starten - REPL läuft dauerhaft
+# Einfach starten — Backend-Erkennung, Multi-Agent, Tools & GUI laufen automatisch
 cacli
 
-# Mit anderem Backend
+# Backend explizit wählen
 cacli -b ollama
 cacli -b openai
+cacli -b claude
 
-# Mit Advanced Agent Capabilities
-cacli --enable-tools                           # System Tools (curl, git, npm)
-cacli --enable-tools --enable-mcp              # + MCP (VS Code, Obsidian)
-cacli --enable-tools --enable-mcp --enable-gui # + GUI Control (Photoshop, GIMP)
+# Capabilities gezielt deaktivieren
+cacli --disable-tools     # ohne System-Tools
+cacli --disable-gui       # ohne GUI-Automatisierung
+cacli --enable-mcp        # MCP zusätzlich aktivieren (optional)
 
 # Für Development:
-npm start repl
+npm start
 ```
 
-### One-off Fragen (ohne REPL)
+### One-off Fragen & Tasks (ohne REPL)
 ```bash
-cacli ask "Erkläre mir TypeScript Generics"
-cacli ask "Was ist der Unterschied zwischen let und const?"
+cacli ask "Erkläre mir TypeScript Generics"          # Frage → LLM
+cacli ask "Erstelle eine React Login-Komponente"     # Task → Multi-Agent-System
 ```
 
 ### REPL Befehle
 ```bash
+# Natural Language (Standard — kein Befehl nötig!)
+Was ist async/await?              # Frage → LLM
+Erstelle eine React Komponente    # Task → Agent-Delegation
+Baue einen Webshop mit React,     # Komplexer Task → Dynamic Workflow
+Postgres und Docker
+
+# Multi-Agent System
+/agents               # Aktive Worker Agents anzeigen
+/task <beschreibung>  # Task explizit delegieren
+/broadcast <message>  # Nachricht an alle Agents
+/agent-status         # System-Status
+
+# Collaborative Learning & Reflection
+/reflect              # Reflection-Session (Patterns, Insights, Recommendations)
+/insights             # Letzte Reflection-Sessions
+/knowledge <query>    # Kollektives Wissen durchsuchen
+/agent-stats [id]     # Lern-Statistiken (gesamt oder pro Agent)
+/auto-reflect on|off|<min>  # Automatische Reflexion
+
+# Self-Learning Wissensverwaltung
+/learned [query]      # Gelerntes Wissen anzeigen
+/stats                # Lern-Statistiken
+/share <query>        # Wissen in Global Memory teilen
+/import <query>       # Wissen aus Global Memory importieren
+/export [file]        # Wissen als JSON exportieren
+/load-knowledge <f>   # Wissen aus JSON laden
+/forget <query>       # Gelerntes Wissen löschen
+
 # Datei-Operationen
 /load <file>          # Datei laden
 /save                 # Ausgabe speichern
 /run                  # Code ausführen
-
-# AI Interaction (direkt ohne / möglich!)
-Was ist async/await?  # Direkt fragen
-/ask <prompt>         # Explizit fragen
 /improve <instr>      # Code verbessern
 
 # Multi-Agent Workflows
@@ -168,137 +217,122 @@ Was ist async/await?  # Direkt fragen
 /exit                 # Beenden
 ```
 
-### Beispiel-Session (v3.0 - Natural Language)
+### Beispiel-Session (v4.5 — Auto-Routing)
 ```bash
-🧠 cacli REPL (backend=ollama)
-> Wie kann ich async/await in Python nutzen?
-⤴️ Asking model...
+$ cacli
+
+🔍 Auto-detected backend: OLLAMA
+   Local Ollama with 3 model(s)
+   Model: llama3
+
+🤖 Multi-Agent System enabled
+✅ Multi-Agent system ready with 5 worker agents
+🧠 LLM Backend: ollama
+💡 Just type your task - agents will use LLM for intelligent execution!
+
+> Wie funktioniert Docker?
+⤴️ Asking model...              # Frage → normales LLM
 [Antwort mit Beispielen]
 
-> Entwickle eine Vue.js + Spring Boot Calculator App
-🎯 Detected development task!
-🔍 Running Requirements Engineer...
-📋 Requirements:
-   - Frontend: Vue.js
-   - Backend: Spring Boot
-   - Feature: Calculator (2 Zahlen addieren)
-   - Database: Not needed
+> Erstelle eine React Login-Komponente
+🎯 Task detected (75% confidence, complexity: simple)
+   Reason: Contains action verb; Contains tech keywords: react
+   Routing to Multi-Agent System...
+🤖 Delegating to: Frontend Agent
+✅ Task completed successfully!
 
+> Baue mir einen Webshop mit React, Postgres und Docker
+🎯 Task detected (100% confidence, complexity: complex)
+   Routing to Dynamic Workflow (requirements → multi-step plan)...
+📋 Requirements Engineer analyzing...
 🤖 Generating workflow...
    Agents: requirements → architect → developer → documenter
 
-Proceed? (y/n): y
-🚀 Executing workflow...
-✅ Workflow completed! Code in: ./appcoding-example/
-```
+> /reflect
+🧠 Knowledge Reflection started...
+   Analyzing 12 experiences
 
-### 🎓 Self-Learning Beispiel (v3.0 - NEW!)
-```bash
-cacli --enable-tools --enable-gui
-
-> Create a watermark in GIMP
-
-Agent:
-Let me learn how to do this from the GIMP documentation...
-
-🔧 Executing 1 system tool(s)...
-[TOOL:curl:https://docs.gimp.org/watermark-tutorial]
-✅ curl executed successfully
-
-🖱️ Executing 4 GUI tool(s)...
-[TOOL:gui:launch_app:gimp]
-[TOOL:gui:create_image:800x600]
-[TOOL:gui:add_text:"© 2025"]
-[TOOL:gui:save_image:/tmp/watermark.png]
-
-💡 I successfully learned this task!
-   Tutorial: https://docs.gimp.org/watermark-tutorial
-   Steps executed: 4
-? Save this knowledge for future use? (Y/n) y
-💡 Knowledge saved for future use!
-
----
-
-# Zweiter Durchlauf - Agent erinnert sich!
-> Add a watermark to an image in GIMP
-
-💡 I remember learning this before! (94.2% match)
-📅 Learned: 2025-11-23 15:45:30
-📚 Using saved knowledge:
-[Führt sofort aus - 5x schneller!]
-
-# Gelerntes Wissen verwalten (v3.0.2 - NEW!)
-> /learned
-📚 Learned Knowledge
-1. Create a watermark in GIMP
-   📅 Learned: 2025-11-23 15:45:30
-   🔗 Tutorial: https://docs.gimp.org/watermark-tutorial
-   📝 Steps: launch_app, create_image, add_text, save_image
-
-> /stats
-📊 Self-Learning Statistics
-📈 Overview:
-   Total learned tasks: 15
-   Average: 2.3 tasks/week
-🔗 Top Tutorial Sources:
-   1. docs.gimp.org - 8 tasks (53.3%)
-   2. photoshop.com - 5 tasks (33.3%)
-
-> /share watermark
-✅ Successfully shared 1 task(s) to global memory
-💡 Other projects can now import this knowledge with /import
-
-> /export my-knowledge.json
-✅ Successfully exported 15 task(s)
-📁 File: my-knowledge.json
+📊 Identified Patterns:
+✅ frontend tasks have high success rate (91%)
+💡 react + typescript are often used together
+🎯 Recommendations:
+   Consider creating specialized workflow for react + typescript
 ```
 
 ---
 
 ## 🛠️ Backends
 
-| Backend | Setup | Verwendung |
-|---------|-------|------------|
-| **LM Studio** | [Setup Guide](docs/setup/lm-studio.md) | Desktop, GUI, Windows |
-| **Ollama Docker** | [Setup Guide](docs/setup/ollama-docker.md) | Server, CLI, Automation |
-| **Mock** | Kein Setup nötig | Testing |
+cacli erkennt Backends **automatisch** — manuelle Konfiguration ist optional.
 
-**Konfiguration** (`.env`):
+| Backend | Erkennung | Setup |
+|---------|-----------|-------|
+| **Ollama** | localhost:11434 + installierte Models | [Setup Guide](docs/setup/ollama-docker.md) |
+| **OpenWebUI** | localhost:3000 | [docs.openwebui.com](https://docs.openwebui.com) |
+| **OpenAI** | `OPENAI_API_KEY` gesetzt | [platform.openai.com](https://platform.openai.com/api-keys) |
+| **Claude/Anthropic** | `ANTHROPIC_API_KEY` gesetzt oder OAuth (`cacli login claude`) | [console.anthropic.com](https://console.anthropic.com) |
+| **Mock** | Fallback (Simulation) | Kein Setup nötig |
+
+**Konfiguration** (`.env`, alles optional):
 ```env
+# Backend (überschreibt Auto-Erkennung)
 MODEL_BACKEND=ollama
 OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=mistral:7b
+OLLAMA_MODEL=llama3
 
 # Memory
 USE_QDRANT=true
 QDRANT_URL=http://localhost:6333
 
-# Self-Learning (optional)
-SELF_LEARNING_SIMILARITY_THRESHOLD=0.8  # Similarity threshold (0.0-1.0)
-SELF_LEARNING_AUTO_SAVE=false           # Skip confirmation prompt
+# Capabilities (standardmäßig aktiv)
+ENABLE_AGENT_TOOLS=true          # false zum Deaktivieren
+ENABLE_GUI_CONTROL=true          # false zum Deaktivieren
+ENABLE_MCP=false                 # true zum Aktivieren
+
+# Learning
+SHARE_LEARNING_GLOBAL=false      # true: Agent-Erfahrungen automatisch team-weit teilen
+SELF_LEARNING_SIMILARITY_THRESHOLD=0.8
+SELF_LEARNING_AUTO_SAVE=false
 ```
+
+---
+
+## 🧪 Tests
+
+```bash
+npm test              # 111 Tests (Orchestrator, Backends, Auth, Utils)
+npm run test:coverage # Mit Coverage-Report
+```
+
+Abgedeckt: TaskDetector (DE/EN), Message Bus, Worker Agents, Task Delegator, Agent Learning, Knowledge Reflector, Learning Coordinator, System-Prompt-Weitergabe aller Backends.
 
 ---
 
 ## 📦 Projekt-Struktur
 
 ```
-caili/
+multiAgentCli/
 ├── src/
 │   ├── auth/              # OAuth2 & Token Management
-│   ├── backends/          # LLM Integrations
+│   ├── backends/          # LLM Integrations (Ollama, OpenAI, Claude, ...)
 │   ├── memory/            # 4-Level Memory System
-│   ├── orchestrator/      # Multi-Agent System (+ Dynamic Generator!)
-│   ├── plugins/           # Plugin System
+│   ├── orchestrator/      # Multi-Agent System
+│   │   ├── master-agent.ts        # SPOC — orchestriert alle Agents
+│   │   ├── worker-agent.ts        # Basisklasse mit Learning
+│   │   ├── example-agents.ts      # Frontend/Backend/DevOps/Design/General
+│   │   ├── message-bus.ts         # Inter-Agent-Kommunikation
+│   │   ├── task-detector.ts       # Auto-Routing (DE/EN)
+│   │   ├── task-delegator.ts      # Capability-basiertes Routing
+│   │   ├── agent-learning.ts      # Erfahrungs-Aufzeichnung
+│   │   ├── knowledge-reflector.ts # Pattern-Erkennung & Insights
+│   │   └── learning-coordinator.ts # Kollektives Lernen
+│   ├── setup/             # Setup Wizard & Backend-Auto-Detection
+│   ├── gui/               # GUI Control (Photoshop, GIMP, ...)
+│   ├── mcp/               # MCP Integration
 │   ├── tools/             # Web Agent Tools
 │   └── web/               # Dashboard
-├── .claude/
-│   └── workflows/         # Markdown Workflow Templates (.md)
-├── docs/
-│   ├── setup/             # Setup-Guides
-│   └── features/          # Feature-Dokumentation
-├── templates/             # Agent-Templates
-├── examples/              # Beispiel-Workflows & Specs
+├── .claude/workflows/     # Markdown Workflow Templates
+├── docs/                  # Setup- & Feature-Dokumentation
 └── QUICK-START.md         # Schnelleinstieg
 ```
 
@@ -306,33 +340,37 @@ caili/
 
 ## 🎯 Version History
 
-### v3.0.0 (Aktuell) - "CAILI"
-- ✅ **Dynamic Workflow Generation** - Automatische Workflow-Erstellung basierend auf Requirements
-- ✅ **Requirements Engineer** - Standardmäßig erster Agent in allen Workflows
-- ✅ **Natural Language Interface** - Direkte Prompts ohne `/ask`
-- ✅ **Slash Commands** - System-Befehle wie in Claude Code
-- ✅ **Markdown Workflows** - `.md` Templates statt `.yml`
-- ✅ **Auto-Detection** - Erkennt Development-Tasks automatisch
-- ✅ **Advanced Agent Capabilities** - Tool Use, MCP, GUI Control, Self-Learning
-- ✅ **npm Package Ready** - Globale Installation mit `npm install -g cacli`
-- ✅ **Dokumentation** - Reorganisiert in docs/setup/ und docs/features/
+### v4.5.x (Aktuell)
+- ✅ **Selbstkonfigurierende Backend-Erkennung** — Ollama/OpenWebUI/OpenAI/Claude automatisch
+- ✅ **Kritische Fixes**: System-Prompts erreichen das LLM, persistentes Lernen verdrahtet, einheitliche Task-Erkennung (DE/EN), Global-Sharing opt-in
+- ✅ **Testsuite**: 111 Tests für Orchestrator-Kern und Backends
 
-### v2.1
-- ✅ OAuth2 Browser Flow mit PKCE
-- ✅ Persistente Token-Speicherung (verschlüsselt)
-- ✅ Automatische Token-Erneuerung
-- ✅ Token Management CLI
+### v4.4
+- ✅ **Echte LLM-Integration** — alle Worker Agents nutzen das konfigurierte LLM mit spezialisierten System-Prompts
+- ✅ Ollama als Standard-Backend
 
-### v2.0
-- ✅ Parallele Agenten-Ausführung
-- ✅ Agent Memory Isolation
-- ✅ Workflow Visualization
-- ✅ Web UI Dashboard
+### v4.3
+- ✅ **Collaborative Learning & Knowledge Reflection** — Agents lernen aus jedem Task, Reflection-Sessions erkennen Patterns
+- ✅ Neue Commands: `/reflect`, `/insights`, `/knowledge`, `/agent-stats`, `/auto-reflect`
+
+### v4.1 / v4.2
+- ✅ **Intelligentes Auto-Routing** — TaskDetector mit Confidence-Scoring
+- ✅ Multi-Agent, Tools & GUI standardmäßig aktiv (Flags: `--disable-tools`, `--disable-gui`)
+
+### v4.0
+- ✅ **Multi-Agent Orchestration** — Master Agent (SPOC), Message Bus, Agent Registry, Task Delegator, 5 Worker Agents
+
+### v3.0 - "CAILI"
+- ✅ Dynamic Workflow Generation mit Requirements Engineer
+- ✅ Natural Language Interface, Slash Commands, Markdown Workflows
+- ✅ Advanced Agent Capabilities (Tool Use, MCP, GUI Control, Self-Learning)
+
+### v2.x
+- ✅ OAuth2 Browser Flow (PKCE), Token Management
+- ✅ Parallele Agenten-Ausführung, Web UI Dashboard
 
 ### v1.0
-- ✅ 4-Level Memory System
-- ✅ Real Embeddings (Ollama, OpenAI)
-- ✅ Prompt History mit Semantic Search
+- ✅ 4-Level Memory System, Real Embeddings, Semantic Search
 
 ---
 
@@ -342,6 +380,7 @@ caili/
 - **Docker Execution**: Isolierte Ausführung (Docker erforderlich)
 - **OAuth2 Tokens**: AES-256-GCM verschlüsselt in `~/.cacli/tokens.json`
 - **API Keys**: In `.env` speichern, nie committen!
+- **Agent Learning**: Erfahrungen bleiben projekt-lokal; Team-Sharing nur mit explizitem Opt-in (`SHARE_LEARNING_GLOBAL=true`)
 - **Qdrant**: Für Produktion mit Auth sichern
 
 ---
@@ -367,4 +406,4 @@ MIT
 
 ---
 
-**Los geht's!** → [QUICK-START.md](QUICK-START.md)
+**Los geht's!** → `npm start` 🚀
